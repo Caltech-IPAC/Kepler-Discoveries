@@ -1,0 +1,309 @@
+
+    table.customTbl
+    {
+    border-collapse:collapse;
+    }
+    table.customTbl, table.customTbl th, table.customTbl td {
+    border: 1px solid white !important; padding:3px;
+    }
+    td.HdrBlue2Bold, td.HdrGrey2Bold, td.HdrBrown2Bold, td.HdrBlue3Bold, td.HdrGrey3Bold, td.HdrBrown3Bold {
+    	padding:3px 2px 3px 2px !important; 
+    }
+    td.HdrBlue1Bold {
+    color:#fffefd;
+    font-size:15px;
+    font-weight:bold;
+    background-color:#0d2142;
+    text-align:center !important;
+    vertical-align:middle;
+    }
+    td.HdrGrey1Bold {
+    color:#000000;
+    font-size:15px;
+    font-weight:bold;
+    background-color:#909090;
+    text-align:center !important;
+    vertical-align:middle;
+    }
+    td.HdrBrown1Bold {
+    color:#fffefd;
+    font-size:15px;
+    font-weight:bold;
+    background-color:#664b20;
+    text-align:center !important;
+    vertical-align:middle;
+    }
+    td.HdrBlue2Bold {
+    color:#fffefd;
+    font-size:12px;
+    font-weight:bold;
+    background-color:#143264;
+    text-align:center !important;
+    vertical-align:middle;
+    }
+    td.HdrGrey2Bold {
+    color:#000000;
+    font-size:12px;
+    font-weight:bold;
+    background-color:#d1d1d1;
+    text-align:center !important;
+    vertical-align:middle;
+    }
+    td.HdrBrown2Bold {
+    color:#fffefd;
+    font-size:12px;
+    font-weight:bold;
+    background-color:#87642a;
+    text-align:center !important;
+    vertical-align:middle;
+    }
+    td.HdrBlue3BoldItalic {
+    color:#fffefd;
+    font-size:12px;
+    font-weight:bold;
+    background-color:#2c4c7f;
+    text-align:center !important;
+    vertical-align:middle;
+    font-style: italic;
+    }
+    td.HdrGrey3BoldItalic {
+    color:#000000;
+    font-size:12px;
+    font-weight:bold;
+    background-color:#d1d1d1;
+    text-align:center !important;
+    vertical-align:middle;
+    font-style: italic;
+    }
+    td.HdrBrown3BoldItalic {
+    color:#fffefd;
+    font-size:12px;
+    font-weight:bold;
+    background-color:#a57f40;
+    text-align:center !important;
+    vertical-align:middle;
+    font-style: italic;
+    }
+    td.HdrBlue3Italic {
+    color:#fffefd;
+    font-size:12px;
+    background-color:#2c4c7f;
+    text-align:center !important;
+    vertical-align:middle;
+    font-style: italic;
+    }
+    td.HdrGrey3Italic {
+    color:#000000;
+    font-size:12px;
+    background-color:#d1d1d1;
+    text-align:center !important;
+    vertical-align:middle;
+    font-style: italic;
+    }
+    td.HdrBrown3Italic {
+    color:#fffefd;
+    font-size:12px;
+    background-color:#a57f40;
+    text-align:center !important;
+    vertical-align:middle;
+    font-style: italic;
+    }
+    td.TdBlue1 {
+    color:#000000;
+    font-size:12px;
+    background-color:#becee7;
+    text-align:center !important;
+    vertical-align:middle;
+    border-top:2px !important; border-bottom:2px !important;
+    }
+    td.TdGrey1 {
+    color:#000000;
+    font-size:12px;
+    background-color:#e8e8e8;
+    text-align:center !important;
+    vertical-align:middle;
+    border-top:2px !important; border-bottom:2px !important;
+    }
+    td.TdBrown1 {
+    color:#000000;
+    font-size:12px;
+    background-color:#e3d0a6;
+    text-align:center !important;
+    vertical-align:middle;
+    border-top:2px !important; border-bottom:2px !important;
+    }
+    td.TdSpacerBlue1 {
+    color:#fffefd;
+    font-size:12px;
+    background-color:#0d2142;
+    text-align:left;
+    vertical-align:middle;
+    height: 8px;
+    }
+    td.TdSpacerGrey1 {
+    color:#000000;
+    font-size:12px;
+    background-color:#909090;
+    text-align:left;
+    vertical-align:middle;
+    height: 8px;
+    }
+    td.TdSpacerBrown1 {
+    color:#fffefd;
+    font-size:12px;
+    background-color:#664b20;
+    text-align:left;
+    vertical-align:middle;
+    height: 8px;
+    }
+    th.HdrBlue2Bold, th.HdrGrey2Bold, th.HdrBrown2Bold, th.HdrBlue3Bold, th.HdrGrey3Bold, th.HdrBrown3Bold {
+    	padding:3px 2px 3px 2px !important; 
+    }
+    th.HdrBlue1Bold {
+    color:#fffefd;
+    font-size:15px;
+    font-weight:bold;
+    background-color:#0d2142;
+    text-align:center !important;
+    vertical-align:middle;
+    }
+    th.HdrGrey1Bold {
+    color:#000000;
+    font-size:15px;
+    font-weight:bold;
+    background-color:#909090;
+    text-align:center !important;
+    vertical-align:middle;
+    }
+    th.HdrBrown1Bold {
+    color:#fffefd;
+    font-size:15px;
+    font-weight:bold;
+    background-color:#664b20;
+    text-align:center !important;
+    vertical-align:middle;
+    }
+    th.HdrBlue2Bold {
+    color:#fffefd;
+    font-size:12px;
+    font-weight:bold;
+    background-color:#143264;
+    text-align:center !important;
+    vertical-align:middle;
+    }
+    th.HdrGrey2Bold {
+    color:#000000;
+    font-size:12px;
+    font-weight:bold;
+    background-color:#d1d1d1;
+    text-align:center !important;
+    vertical-align:middle;
+    }
+    th.HdrBrown2Bold {
+    color:#fffefd;
+    font-size:12px;
+    font-weight:bold;
+    background-color:#87642a;
+    text-align:center !important;
+    vertical-align:middle;
+    }
+    th.HdrBlue3BoldItalic {
+    color:#fffefd;
+    font-size:12px;
+    font-weight:bold;
+    background-color:#2c4c7f;
+    text-align:center !important;
+    vertical-align:middle;
+    font-style: italic;
+    }
+    th.HdrGrey3BoldItalic {
+    color:#000000;
+    font-size:12px;
+    font-weight:bold;
+    background-color:#d1d1d1;
+    text-align:center !important;
+    vertical-align:middle;
+    font-style: italic;
+    }
+    th.HdrBrown3BoldItalic {
+    color:#fffefd;
+    font-size:12px;
+    font-weight:bold;
+    background-color:#a57f40;
+    text-align:center !important;
+    vertical-align:middle;
+    font-style: italic;
+    }
+    th.HdrBlue3Italic {
+    color:#fffefd;
+    font-size:12px;
+    background-color:#2c4c7f;
+    text-align:center !important;
+    vertical-align:middle;
+    font-style: italic;
+    }
+    th.HdrGrey3Italic {
+    color:#000000;
+    font-size:12px;
+    background-color:#d1d1d1;
+    text-align:center !important;
+    vertical-align:middle;
+    font-style: italic;
+    }
+    th.HdrBrown3Italic {
+    color:#fffefd;
+    font-size:12px;
+    background-color:#a57f40;
+    text-align:center !important;
+    vertical-align:middle;
+    font-style: italic;
+    }
+    th.TdBlue1 {
+    color:#000000;
+    font-size:12px;
+    background-color:#becee7;
+    text-align:center !important;
+    vertical-align:middle;
+    border-top:2px !important; border-bottom:2px !important;
+    }
+    th.TdGrey1 {
+    color:#000000;
+    font-size:12px;
+    background-color:#e8e8e8;
+    text-align:center !important;
+    vertical-align:middle;
+    border-top:2px !important; border-bottom:2px !important;
+    }
+    th.TdBrown1 {
+    color:#000000;
+    font-size:12px;
+    background-color:#e3d0a6;
+    text-align:center !important;
+    vertical-align:middle;
+    border-top:2px !important; border-bottom:2px !important;
+    }
+    th.TdSpacerBlue1 {
+    color:#fffefd;
+    font-size:12px;
+    background-color:#0d2142;
+    text-align:left;
+    vertical-align:middle;
+    height: 8px;
+    }
+    th.TdSpacerGrey1 {
+    color:#000000;
+    font-size:12px;
+    background-color:#909090;
+    text-align:left;
+    vertical-align:middle;
+    height: 8px;
+    }
+    th.TdSpacerBrown1 {
+    color:#fffefd;
+    font-size:12px;
+    background-color:#664b20;
+    text-align:left;
+    vertical-align:middle;
+    height: 8px;
+    }
+
