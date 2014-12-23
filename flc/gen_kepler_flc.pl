@@ -90,20 +90,20 @@ sub gen_xml {
   $xml =wrap_xml('name',              $meta->{pl_hostname});
   $xml.=wrap_xml('starRadius',        $meta->{st_rad})       if defined $meta->{st_rad};
   $xml.=wrap_xml('starTemperature',   $meta->{st_teff})      if defined $meta->{st_teff};
-  $xml.=wrap_xml('featuredPlanetName',$meta->{pl_name});
+  $xml.=wrap_xml('featuredPlanetName',::nw($meta->{pl_name}));
 
   my $mpxml;
   for my $pname (keys %{$meta->{planets}}) {
     my $pxml;
     my $pmeta=$meta->{planets}{$pname};
-    $pxml = wrap_xml('name',         $pname);
+    $pxml = wrap_xml('name',         ::nw($pname));
     $pxml.= wrap_xml('semimajorAxis',$pmeta->{semimajoraxis}) if defined $pmeta->{semimajoraxis};
     $pxml.= wrap_xml('radius',       $pmeta->{radius})        if defined $pmeta->{radius};
     $pxml.= wrap_xml('period',       $pmeta->{period})        if defined $pmeta->{period};
     $pxml.= wrap_xml('inclination',  $pmeta->{inclination})   if defined $pmeta->{inclination};
     $pxml.= wrap_xml('eccentricity', $pmeta->{eccentricity})  if defined $pmeta->{eccentricity}; 
     if ($meta->{pl_name}=~/$pname/) {
-      $pxml.='<!-- data for '.$pname.', generated '.$meta->{date}.' -->'."\n";
+      $pxml.='<!-- data for '.::nw($pname).', generated '.$meta->{date}.' -->'."\n";
       $pxml.=wrap_xml('dataPoints', "\n".series_xml($time,$data, $filter));
       $pxml.=wrap_xml('curvePoints',"\n".series_xml($time,$model,$filter));
     }

@@ -13,6 +13,9 @@ use strict;
 use Time::Piece;
 use Data::Dumper;
 
+sub tw { local $_=shift; s/^\s+//; s/\s+$//; return $_ }  # remove leading and trailing white-space
+sub nw { local $_=shift; s/\s+//g;           return $_ }  # remove all white-space
+
 sub uniq  { keys %{ { map { $_ => 1 } @_ } } }
 
 sub remap(\@\@) {
