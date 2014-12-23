@@ -260,11 +260,12 @@ print STDERR "Loaded $np confirmed planets\n" unless $opt{q};
   @model=remap @model, @sort_indices;
   @time_filter=remap @time_filter, @sort_indices;
 
-  my $xml_out=$kname;  $xml_out=~s/\s+/-/g; $xml_out.='.xml';
+  my $xml_out=lc($kname);  $xml_out=~s/(\s+|-)//g; $xml_out.='.xml';
   open XML, ">$xml_out" or die "Couldn't create $xml_out";
   print XML gen_xml($meta,\@folded_time,\@data,\@model,\@time_filter);
   close XML;
 
+  print STDERR "Wrote $xml_out for $kname\n" unless $opt{q};
   unlink $tempfile unless $opt{keep_tbl};   # cleanup
 
 # }
