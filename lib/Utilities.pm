@@ -13,6 +13,8 @@ use strict;
 use Time::Piece;
 use Data::Dumper;
 
+$::M_PI = 4.0*atan2(1.0,1.0);
+
 sub tw { local $_=shift; s/^\s+//; s/\s+$//; return $_ }  # remove leading and trailing white-space
 sub nw { local $_=shift; s/\s+//g;           return $_ }  # remove all white-space
 

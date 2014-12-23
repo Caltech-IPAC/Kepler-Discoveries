@@ -43,17 +43,14 @@ sub load_meta {
   my $n=shift;
   my $e=shift;
 
+  # load planet parameters
   my $m;
-  $m->{planets}{$n->{kepler_name}}{semimajoraxis}=$e->{plorbsmax};
-  $m->{planets}{$n->{kepler_name}}{radius}       =$e->{pl_radj};    # JUPITER RADIUS!
-  $m->{planets}{$n->{kepler_name}}{period}       =$e->{pl_orbper};
-  $m->{planets}{$n->{kepler_name}}{inclination}  =$e->{pl_orbincl};
-  $m->{planets}{$n->{kepler_name}}{eccentricity} =$e->{pl_orbeccen};
+  for (keys %$e) { $m->{planets}{$n->{kepler_name}}{$_}=$e->{$_} }
 
-  $m->{pl_hostname}=$e->{pl_hostname};
-  $m->{st_rad} =    $e->{st_rad};
-  $m->{st_teff}=    $e->{st_teff};
-  $m->{pl_name}=    $e->{pl_name};
+  # load selected host parameters
+  for (qw( pl_hostname st_rad st_teff pl_name )) { $m->{$_}=$e->{$_} }
+
+  # other parameters
   $m->{date}=       $n->{last_update};
 
   return $m;
@@ -92,16 +89,25 @@ sub gen_xml {
   $xml.=wrap_xml('starTemperature',   $meta->{st_teff})      if defined $meta->{st_teff};
   $xml.=wrap_xml('featuredPlanetName',::nw($meta->{pl_name}));
 
+  my $pi2 = $::M_PI/2.0;
+
   my $mpxml;
   for my $pname (keys %{$meta->{planets}}) {
     my $pxml;
-    my $pmeta=$meta->{planets}{$pname};
-    $pxml = wrap_xml('name',         ::nw($pname));
-    $pxml.= wrap_xml('semimajorAxis',$pmeta->{semimajoraxis}) if defined $pmeta->{semimajoraxis};
-    $pxml.= wrap_xml('radius',       $pmeta->{radius})        if defined $pmeta->{radius};
-    $pxml.= wrap_xml('period',       $pmeta->{period})        if defined $pmeta->{period};
-    $pxml.= wrap_xml('inclination',  $pmeta->{inclination})   if defined $pmeta->{inclination};
-    $pxml.= wrap_xml('eccentricity', $pmeta->{eccentricity})  if defined $pmeta->{eccentricity}; 
+    my $pmeta=$meta->{planets}{$pname};  
+    for (qw( pl_orbsmax pl_trandur pl_radj pl_orbper )) {
+      unless (defined $pmeta->{$_}) { print STDERR "No $_ parameter for planet $pname.  Skipping...\n"; return undef }
+    }
+    $pxml = wrap_xml('name',                       ::nw($pname));
+    $pxml.= wrap_xml('semimajorAxis',              $pmeta->{pl_orbsmax});
+    $pxml.= wrap_xml('radius',                     $pmeta->{pl_radj});   # JUPITER RADIUS???
+    $pxml.= wrap_xml('period',                     $pmeta->{pl_orbper});
+    $pxml.= wrap_xml('longitudeOfAscendingNode',   undef // $pi2);  
+    $pxml.= wrap_xml('argumentOfPericenter',       undef // $pi2);
+    $pxml.= wrap_xml('inclination',        $pi2 - ($pmeta->{pl_orbincl}  // 0.0) * $::M_PI/180.0);  # offset from pi/2
+    $pxml.= wrap_xml('eccentricity',               $pmeta->{pl_orbeccen} // 0.0);
+    $pxml.= wrap_xml('transitDuration',            $pmeta->{pl_trandur});
+    $pxml.= wrap_xml('meanAnomalyAtTransitMiddle', undef // 0.0);
     if ($meta->{pl_name}=~/$pname/) {
       $pxml.='<!-- data for '.::nw($pname).', generated '.$meta->{date}.' -->'."\n";
       $pxml.=wrap_xml('dataPoints', "\n".series_xml($time,$data, $filter));
