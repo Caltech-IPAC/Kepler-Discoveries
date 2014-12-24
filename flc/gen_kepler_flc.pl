@@ -37,22 +37,38 @@ use Utilities;
 use XA;
 use IPAC_AsciiTable;
 
+# global to this file:  command line options
+
+our %opt;
+
+sub sort_with_first {
+  my $first=shift;
+  return ($first,sort { $a cmp $b } grep { $_ ne $first } @_);
+}
+
 # script functions for encoding XML data
 
 sub load_meta {
-  my $n=shift;
-  my $e=shift;
-
-  # load planet parameters
+  my $X=shift;   # reference to XA object
+  my @pnames=@_;
+  my $first=1;  # host and 'other' data only assigned once
   my $m;
-  for (keys %$e) { $m->{planets}{$n->{kepler_name}}{$_}=$e->{$_} }
-
-  # load selected host parameters
-  for (qw( pl_hostname st_rad st_teff pl_name )) { $m->{$_}=$e->{$_} }
-
-  # other parameters
-  $m->{date}=       $n->{last_update};
-
+  for my $pname (@pnames) {
+    my $n=$X->keplernames_planet_row($pname);
+    die "No Exoplanet Table Entry Name for $pname!\n" unless $n->{alt_name};
+    print STDERR "Keplernames Planet Row for $pname:\n" if $opt{debug};
+    my $e=$X->exoplanet_planet_row($n->{alt_name});
+    print STDERR "Exoplanet Planet Row for $n->{alt_name}:\n" if $opt{debug};
+    if ($first) {
+      # load selected host parameters
+      for (qw( pl_hostname st_rad st_teff pl_name )) { $m->{$_}=$e->{$_} }
+      # other parameters
+      $m->{date}=$n->{last_update};
+      $first=0;
+    }
+    # load planet parameters
+    for (keys %$e) { $m->{planets}{$n->{kepler_name}}{$_}=$e->{$_} }
+  }
   return $m;
 }
     
@@ -92,23 +108,24 @@ sub gen_xml {
   my $pi2 = $::M_PI/2.0;
 
   my $mpxml;
-  for my $pname (keys %{$meta->{planets}}) {
+  for my $pname (sort_with_first($meta->{pl_name},keys %{$meta->{planets}})) {
     my $pxml;
     my $pmeta=$meta->{planets}{$pname};  
     for (qw( pl_orbsmax pl_trandur pl_radj pl_orbper )) {
       unless (defined $pmeta->{$_}) { print STDERR "No $_ parameter for planet $pname.  Skipping...\n"; return undef }
     }
+    print STDERR "Loading data for planet $pname:  ",Dumper($pmeta),"\n" if $opt{debug};
     $pxml = wrap_xml('name',                       ::nw($pname));
     $pxml.= wrap_xml('semimajorAxis',              $pmeta->{pl_orbsmax});
     $pxml.= wrap_xml('radius',                     $pmeta->{pl_radj});   # JUPITER RADIUS???
     $pxml.= wrap_xml('period',                     $pmeta->{pl_orbper});
     $pxml.= wrap_xml('longitudeOfAscendingNode',   undef // $pi2);  
     $pxml.= wrap_xml('argumentOfPericenter',       undef // $pi2);
-    $pxml.= wrap_xml('inclination',        $pi2 - ($pmeta->{pl_orbincl}  // 0.0) * $::M_PI/180.0);  # offset from pi/2
-    $pxml.= wrap_xml('eccentricity',               $pmeta->{pl_orbeccen} // 0.0);
+    $pxml.= wrap_xml('inclination',        $pi2 - ($pmeta->{pl_orbincl}  || 0.0) * $::M_PI/180.0);  # offset from pi/2
+    $pxml.= wrap_xml('eccentricity',               $pmeta->{pl_orbeccen} || 0.0);  # getting null string for this from db
     $pxml.= wrap_xml('transitDuration',            $pmeta->{pl_trandur});
     $pxml.= wrap_xml('meanAnomalyAtTransitMiddle', undef // 0.0);
-    if ($meta->{pl_name}=~/$pname/) {
+    if ($meta->{pl_name} eq $pname) {
       $pxml.='<!-- data for '.::nw($pname).', generated '.$meta->{date}.' -->'."\n";
       $pxml.=wrap_xml('dataPoints', "\n".series_xml($time,$data, $filter));
       $pxml.=wrap_xml('curvePoints',"\n".series_xml($time,$model,$filter));
@@ -170,8 +187,8 @@ use Data::Dumper;
 
 use LWP::Simple;
 use Getopt::Long;
-my %opt;
-GetOptions (\%opt, 'q|quiet', 'tbl=s', 'keep_tbl', 'max=i');
+
+GetOptions (\%opt, 'q|quiet', 'tbl=s', 'keep_tbl', 'max=i', 'debug');
 
 print STDERR "perldoc $0 for help.\n" unless $opt{q};
 
@@ -180,8 +197,6 @@ die "Usage:  $0 kepler-name" unless scalar(@ARGV);
 my $kname;
 
 $kname=join(' ',@ARGV);
-
-print STDERR "Loading all Exoplanet Archive Tables\n" unless $opt{q};
 
 my $X=new XA;
 my @r=$X->kepler_names;
@@ -203,8 +218,15 @@ print STDERR "Loaded $np confirmed planets\n" unless $opt{q};
   
   my $e=$X->exoplanet_planet_row($n->{alt_name});
   print STDERR "Exoplanet Planet Row for $n->{alt_name}:\n" unless $opt{q};
-#  print STDERR Dumper($e) unless $opt{q};
+  # print STDERR Dumper($e) unless $opt{q};
   
+  # this is a bit awkward, but match the hostname against all the known planets,
+  # then sort them with the requested planet first in order
+
+  print STDERR "There should be $e->{pl_pnum} planets in this system\n" unless $opt{q};
+  my @pnames=sort_with_first($kname,grep /$e->{pl_hostname}\s+[b-z]+/, @r);
+  print STDERR "Found the following:  ",join(' ',@pnames),"\n" unless $opt{q};
+
   my ($kepoi_number)=($n->{kepoi_name}=~/K0*([1-9]\d*\.\d\d)/);  # undef if no match
   
   if ($n->{koi_list_flag} cmp 'YES') {  # if koi_list_flag is false, then no data
@@ -213,7 +235,7 @@ print STDERR "Loaded $np confirmed planets\n" unless $opt{q};
   } 
   
   my $tce_data=$X->tce_data_for_kepoi_name($n->{kepoi_name});
-  print STDERR Dumper($tce_data) unless $opt{q};
+  print STDERR Dumper($tce_data) if $opt{debug};
 
   unless (defined $tce_data and scalar(keys %$tce_data)) {
     print STDERR "No TCE data available for $n->{kepoi_name}\n";
@@ -238,7 +260,7 @@ print STDERR "Loaded $np confirmed planets\n" unless $opt{q};
   print TEMP $dv_data, "\n";
   close TEMP;
   
-  my $meta=load_meta($n,$e);   # gather all info, and process into meta data for XML writing
+  my $meta=load_meta($X,@pnames);   # gather all info, and process into meta data for XML writing
 
   my $T=new IPAC_AsciiTable $tempfile;
   
