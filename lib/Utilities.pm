@@ -32,8 +32,8 @@ sub today { return Time::Piece->new->strftime('%Y/%m/%d') }
 sub now   { return localtime() }
 
 sub fmod {      # floating point version of modulo function
-  my $x=shift;  # value to fold
-  my $f=shift;  # fold-interval
+  my $x=shift;         # value to fold
+  my $f=abs(shift());  # fold-interval (negative values treated same as positive)
   if ($x<0) { return fmod( int(2-$x/$f)*$f+$x, $f ) }  # handles edge cases carefully
   return $x-int($x/$f)*$f;
 }
@@ -46,7 +46,7 @@ sub ra_str {
   my $ra_mins=($ra-$ra_hh)*60.0;
   my $ra_mm=int($ra_mins);
   my $ra_secs=($ra_mins-$ra_mm)*60.0;
-  return sprintf("%+02d %02d %5.2f",$ra_hh,$ra_mm,$ra_secs);
+  return sprintf("%+d %02d %5.2f",$ra_hh,$ra_mm,$ra_secs);
 }
 
 sub dec_str {
@@ -55,7 +55,7 @@ sub dec_str {
   my $dec_mins=($dec-$dec_deg)*60.0;
   my $dec_mm=int($dec_mins);
   my $dec_secs=($dec_mins-$dec_mm)*60.0;
-  return sprintf("%+02d %02d %5.2f",$dec_deg,$dec_mm,$dec_secs);
+  return sprintf("%+d %02d %5.2f",$dec_deg,$dec_mm,$dec_secs);
 }
 
 sub is_number { my $x=shift; return $x=~/\d/ }
