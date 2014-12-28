@@ -58,12 +58,11 @@ Discoveries pages will be provided.
 =cut
 
 use strict;
-use Time::Piece;
+use Time::Piece;   # This appears to be no longer necessary -- remove???
 
 sub uniq  { keys %{ { map { $_ => 1 } @_ } } }
 
-sub today { return Time::Piece->new->strftime('%Y/%m/%d') }
-sub now   { return localtime() }
+sub now   { return localtime() }   # This seems silly -- just use system function here???
 
 # convert from one decimal coordinate format to HHMMSS for RA and DEC
 

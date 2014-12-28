@@ -12,19 +12,9 @@ use strict;
 use feature 'switch';
 # no warnings 'experimental::smartmatch';
 
+use Utilities;
+
 use Data::Dumper;
-
-sub identical_arrays {
-  my $a1=shift;
-  my $a2=shift;
-  return 0 unless scalar(@$a1)==scalar(@$a2);
-  for (my $i=0; $i<scalar(@$a1); $i++) { return 0 unless $a1->[$i]==$a2->[$i] }
-  return 1;
-}
-  
-sub trim_white { local $_=shift; s/^\s*//; s/\s*$//; return $_ }
-
-sub max { my $m=shift; for (@_) { $m=($_>$m) ? $_ : $m } return $m }
 
 sub marker_capture {
   local $_=shift;
@@ -92,7 +82,7 @@ sub new_from_file {
 	    die "inconsistent column markers; line is:\n$_\n";
 	  }
 	} else { $T->{M}=\@cm; $c{M}=1 }
-	my @c=map { trim_white($_) } column_capture($_,@{$T->{M}});
+	my @c=map { tw($_) } column_capture($_,@{$T->{M}});
 	for my $m (@m) {
 	  next if $c{$m};  # already have this column info
 	  $T->{$m}=\@c;    # capture new column info
@@ -105,7 +95,7 @@ sub new_from_file {
 	  print Dumper($T),"\n";
 	  die "Apparent data line prior to defining mandatory headers:\n$_\n" 
 	}
-	my @c=map { trim_white($_) } column_capture($_,@{$T->{M}});
+	my @c=map { tw($_) } column_capture($_,@{$T->{M}});
 	for my $h (@{$T->{H}}) { push @{$T->{D}{$h}}, shift(@c) }
       }
     }

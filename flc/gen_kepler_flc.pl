@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-BEGIN { $::top_path='/Users/imel/dev/Kepler-Discoveries' }
+BEGIN { $::top_path='/Users/imel/gitdev/Kepler-Discoveries' }
 
 =head1 Name 
 
@@ -29,7 +29,6 @@ Execute without printing to STDERR "progress/status" and planet web-page found u
 use strict;
 use warnings;
 
-# use Time::Piece;
 use Data::Dumper;
 
 use lib "$::top_path/lib";   # use the correct path here
@@ -283,10 +282,10 @@ print STDERR "Loaded $np confirmed planets\n" unless $opt{q};
   # need to sort the phases
   my @sort_indices=sort { $folded_time[$a]<=>$folded_time[$b] } (0..$#folded_time);
 
-  @folded_time=remap @folded_time, @sort_indices;
-  @data=remap @data, @sort_indices;
-  @model=remap @model, @sort_indices;
-  @time_filter=remap @time_filter, @sort_indices;
+  @folded_time=@folded_time[@sort_indices];
+  @data       =@data[@sort_indices];
+  @model      =@model[@sort_indices];
+  @time_filter=@time_filter[@sort_indices];
 
   my $xml_out=lc($kname);  $xml_out=~s/(\s+|-)//g; $xml_out.='.xml';
   open XML, ">$xml_out" or die "Couldn't create $xml_out";

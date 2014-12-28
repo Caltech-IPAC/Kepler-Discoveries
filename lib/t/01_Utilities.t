@@ -3,6 +3,7 @@
 use strict;
 use warnings;
 use Test::More;
+use Test::Exception;
 
 =head1 Name - 01_Utilities.t
 
@@ -17,8 +18,30 @@ where the scripts are.
 
 =cut
 
-
 BEGIN { use lib '..'; use_ok('Utilities') }
+
+sub equal_numeric_arrays {
+    my $a=shift;
+    my $b=shift;
+    my $t=shift;
+    my $EPS=1.0e-6;
+    unless (scalar(@$a)==scalar(@$b)) {
+	fail "$t - array sizes differ:  ".scalar(@$a).' vs '.scalar(@$a);
+	diag explain $a;
+	diag explain $b;
+	return 0;
+    }
+    for my $i (0..$#{$a}) {
+	next if $a->[$i]==$b->[$i];
+	next if abs($a->[$i]-$b->[$i])<$EPS;
+	fail "$t - arrays differ in element $i:  $a->[$i] vs $b->[$i]";
+	diag explain $a;
+	diag explain $b;
+	return 0;
+    }
+    pass $t;
+    return 1;
+}
 
 is( $::M_PI, 4.0*atan2(1.0,1.0), 'M_PI constant set correctly' );
 
@@ -27,15 +50,33 @@ is( ::nw('  test string  '   ),'teststring',   'nw removes all space' );
 is( ::tw("\ntest\tstring\t"  ),"test\tstring", 'tw removes "outside" cr and tabs, too' );
 is( ::nw("\ttest\t\nstring\n"),"teststring",   'nw removes internal and external cr and tabs as well' );
 
+is( max( 2,3,4,5,6 ),             6, "max on argument list" );
+is( max( [2,3,4,5,6] ),           6, "max on anonymous array" );
+is( max( 2,2,2 ),                 2, "max on list of flat values" );
+dies_ok { max( \$::M_PI ) }          "max does not allow ref to scalar argument";
+dies_ok { max( { a=>3 } ) }          "max does not allow ref to hash argument";
+is( max( $::M_PI,$::M_PI ), $::M_PI, "two scalar arguments ok for max" );
+
 my @test = (qw( a b c b d a b c e d f ));
 is_deeply( [ sort { $a cmp $b } ::uniq @test ], [qw( a b c d e f )], 'uniq removes duplicate items' );
 
-my @test_indices=(5,0,1,3,6,2,7,4,9,8,10);
-is_deeply( [ ::remap @test, @test_indices ], [qw( a a b b b c c d d e f )], 'remap an array' );
+is( identical_arrays( @test,  @test),               1, "same array is identical to itself" );
+is( identical_arrays(\@test, \@test),               1, "same refarray is identical to itself" );
+is( identical_arrays(\@test,  @test),               1, "refarray is identical to array" );
+is( identical_arrays( @test, \@test),               1, "same array is identical to itself as refarray" );
+is( identical_arrays( [],     [] ),                 1, "empty arrays are identical" );
+is( identical_arrays( @test,  [] ),                 0, "non-empty array not identical to empty array" );
+is( identical_arrays(\@test,  [] ),                 0, "non-empty refarray not identical to empty array" );
+is( identical_arrays( [],    \@test ),              0, "non-empty array not identical to empty refarray" );
+is( identical_arrays( @test,  [@test,'b'] ),        0, "almost identical arrays with one extra element are not identical" );
+is( identical_arrays( @test,  [pop @test, @test] ), 0, "re-arranged non-identical arrays not identical" );
 
-like( ::today(), qr/20\d{2}\/\d{2}\/\d{2}/, 'today() gives correct format' );
+dies_ok { identical_arrays( @test, () ) }  "two array arguments or refs for identical_arrays:  check second";
+dies_ok { identical_arrays( (), @test ) }  "two array arguments or refs for identical_arrays:  check first";
+dies_ok { identical_arrays( [], () ) }     "two array arguments or refs for identical_arrays:  check both";
+dies_ok { identical_arrays(  $::M_PI,  $::M_PI ) } "identical_arrays does not allow scalar arguments";
+dies_ok { identical_arrays( \$::M_PI, \$::M_PI ) } "identical_arrays does not allow ref to scalar arguments";
 
-# not sure how to do a test on ::now()
 
 is( fmod(5.5 ,  3.0), 2.5, 'fmod on a real value over the modulus' );
 is( fmod(2.5 ,  3.0), 2.5, 'fmod on a real value under the modulus');
@@ -50,11 +91,43 @@ is( fmod(0.0 , -3.0), 0.0, 'fmod on zero with negative modulus' );
 is( fmod(-0.5, -3.0), 2.5, 'fmod on negative value under the negative modulus' );
 is( fmod(-4.0, -3.0), 2.0, 'fmod on negative value over the negative modulus'  );
 
-is( ra_str(90.5),  '+6 30  0.00', 'Conversion from RA to HHMMSS' );
-is( ra_str(-90.5), '-6 30  0.00', 'Conversion from neg RA to HHMMSS' );
+equal_numeric_arrays( [ deg_to_hhmmss( 90.0) ], [ ( 6,  0,  0.0) ],  'Conversion of  RA from DEG to HHMMSS' );
+equal_numeric_arrays( [ deg_to_hhmmss(-90.0) ], [ (18,  0,  0.0) ],  'Conversion of -RA from DEG to HHMMSS' );
+equal_numeric_arrays( [ deg_to_hhmmss(  7.5) ], [ ( 0, 30,  0.0 ) ], 'Convert fractional RA from DEG to HHMMMSS');
+equal_numeric_arrays( [ deg_to_hhmmss(15.0/3600.00) ],  
+		      [ ( 0,  0,  1.0 ) ], 'Convert one sec of RA from DEG to HHMMMSS');
+equal_numeric_arrays( [ deg_to_hhmmss(-15.0/3600.00) ], 
+		      [ (23, 59, 59.0 ) ], 'Convert -1 sec of RA from DEG to HHMMMSS');
+equal_numeric_arrays( [ deg_to_ddmmss( 90.0) ], [ ( 90,  0,  0.0) ],  'Conversion of  DEC from DEG to DDMMSS' );
+equal_numeric_arrays( [ deg_to_ddmmss(-90.0) ], [ (-90,  0,  0.0) ],  'Conversion of -DEC from DEG to DDMMSS' );
+equal_numeric_arrays( [ deg_to_ddmmss(  7.5) ], [ (  7, 30,  0.0 ) ], 'Convert fractional DEC from DEG to DDMMMSS');
+equal_numeric_arrays( [ deg_to_ddmmss( 1.0/3600.00) ],  
+		      [ (  0,  0,  1.0 ) ], 'Convert  1 sec of DEC from DEG to DDMMMSS');
+equal_numeric_arrays( [ deg_to_ddmmss(-1.0/3600.00) ],  		       
+		      [ (  0,  0, -1.0 ) ], 'Convert -1 sec of DEC from DEG to DDMMMSS');
+equal_numeric_arrays( [ deg_to_ddmmss(-1.0/60.00)   ],  		       
+		      [ (  0, -1,  0.0 ) ], 'Convert -1 min of DEC from DEG to DDMMMSS');
+equal_numeric_arrays( [ deg_to_ddmmss(-1.0/60.00-1.0/3600.0) ],  
+		      [ (  0, -1, 1.0 ) ], 'Convert -1 min and 1 sec of DEC from DEG to DDMMMSS');
+equal_numeric_arrays( [ deg_to_ddmmss(-1-1.0/60.00-1.0/3600.0) ],  
+		      [ ( -1,  1, 1.0 ) ], 'Convert -1 deg, 1 min, 1 sec of DEC from DEG to DDMMMSS');
+equal_numeric_arrays( [ deg_to_ddmmss(-1+1.0/3600.0) ],  
+		      [ (  0, -59, 59.0 ) ], 'Convert -1 deg less 1 sec of DEC from DEG to DDMMMSS');
 
-is( dec_str(90.5),  '+90 30  0.00', 'Conversion from DEC to HHMMSS' );
-is( dec_str(-90.5), '-90 30  0.00', 'Conversion from neg DEC to HHMMSS' );
+is( ra_str( 90.0),          "+6 00  0.00", 'Conversion of  RA from DEG to HHMMSS string' );
+is( ra_str(-90.0),         "+18 00  0.00", 'Conversion of -RA from DEG to HHMMSS string' );
+is( ra_str(  7.5),          "+0 30  0.00", 'Convert fractional RA from DEG to HHMMMSS string');
+is( ra_str(15.0/3600.00),   "+0 00  1.00", 'Convert one sec of RA from DEG to HHMMMSS string');
+is( ra_str(-15.0/3600.00), "+23 59 59.00", 'Convert -1 sec of RA from DEG to HHMMMSS string');
+is( dec_str( 90.0),         "+90 00  0.00", 'Conversion of  DEC from DEG to DDMMSS' );
+is( dec_str(-90.0),         "-90 00  0.00", 'Conversion of -DEC from DEG to DDMMSS' );
+is( dec_str(  7.5),          "+7 30  0.00", 'Convert fractional DEC from DEG to DDMMMSS string');
+is( dec_str( 1.0/3600.00),   "+0 00  1.00", 'Convert  1 sec of DEC from DEG to DDMMMSS string');
+is( dec_str(-1.0/3600.00),   "-0 00  1.00", 'Convert -1 sec of DEC from DEG to DDMMMSS string');
+is( dec_str(-1.0/60.00),    "-0 01  0.00", 'Convert -1 min of DEC from DEG to DDMMMSS string');
+is( dec_str(-1.0/60.00-1.0/3600.0),  "-0 01  1.00", 'Convert -1 min +1 sec of DEC from DEG to DDMMMSS string');
+is( dec_str(-1-1.0/60.00-1.0/3600.0),"-1 01  1.00", 'Convert -1 deg, 1 min, 1 sec of DEC from DEG to DDMMMSS string');
+is( dec_str(-1+1.0/3600.0),  "-0 59 59.00", 'Convert -1 deg less 1 sec of DEC from DEG to DDMMMSS string');
 
 ok( is_number(5),       'integer is a number' );
 ok( is_number(-5),      'negative integer is a number' );

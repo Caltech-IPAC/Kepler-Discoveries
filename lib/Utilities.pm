@@ -10,26 +10,30 @@ Utilities.pm - Global functions of general use
 
 use strict;
 
-use Time::Piece;
-use Data::Dumper;
-
 $::M_PI = 4.0*atan2(1.0,1.0);
 
 sub tw { local $_=shift; s/^\s+//; s/\s+$//; return $_ }  # remove leading and trailing white-space
 sub nw { local $_=shift; s/\s+//g;           return $_ }  # remove all white-space
 
-sub uniq  { keys %{ { map { $_ => 1 } @_ } } }
+sub uniq   { keys %{ { map { $_ => 1 } @_ } } }
 
-sub remap(\@\@) {
-  my $a=shift;
-  my $m=shift;
-  die "remap of incompatible arrays:  @{[ scalar(@$a) ]} vs @{[ scalar(@$m) ]}" 
-    unless scalar(@$a)==scalar(@$m);
-  return map { $a->[$_] } @$m;
+sub max {
+  my $a = (ref $_[0]) ? $_[0] : [ @_ ];
+  die "Argument is not an array or arrayref" unless ref $a eq 'ARRAY';
+  my $m=shift @$a;
+  for (@$a) { $m=($_>$m) ? $_ : $m }
+  return $m;
 }
 
-sub today { return Time::Piece->new->strftime('%Y/%m/%d') }
-sub now   { return localtime() }
+sub identical_arrays(++) {
+  my $a=shift;
+  my $b=shift;
+  die "First argument is not an array or arrayref" unless ref $a eq 'ARRAY';
+  die "Second argument is not an array or arrayref" unless ref $b eq 'ARRAY';
+  return 0 unless scalar(@$a)==scalar(@$b);
+  for (my $i=0; $i<scalar(@$a); $i++) { return 0 unless $a->[$i]==$b->[$i] }
+  return 1;
+}
 
 sub fmod {      # floating point version of modulo function
   my $x=shift;         # value to fold
@@ -40,23 +44,50 @@ sub fmod {      # floating point version of modulo function
 
 # convert from one decimal coordinate format to HHMMSS for RA and DEC
 
-sub ra_str {
-  my $ra=shift;  $ra/=15.0;
+# deg_to_hhmmss:  result is forced to be between 0 and 24 hours
+sub deg_to_hhmmss {
+  my $ra=fmod(shift(),360.0);  $ra/=15.0;
   my $ra_hh=int($ra);
   my $ra_mins=($ra-$ra_hh)*60.0;
   my $ra_mm=int($ra_mins);
   my $ra_secs=($ra_mins-$ra_mm)*60.0;
-  return sprintf("%+d %02d %5.2f",$ra_hh,$ra_mm,$ra_secs);
+  return ($ra_hh,$ra_mm,$ra_secs);
 }
 
-sub dec_str {
-  my $dec=shift; 
-  my $dec_deg=int($dec);
-  my $dec_mins=($dec-$dec_deg)*60.0;
-  my $dec_mm=int($dec_mins);
-  my $dec_secs=($dec_mins-$dec_mm)*60.0;
-  return sprintf("%+d %02d %5.2f",$dec_deg,$dec_mm,$dec_secs);
+# result allowed to be negative, which means
+# that the largest non-zero term must carry the sign.  I.e.,
+#   -1.00 deg = -1   0   0
+#   -0.50 deg =  0 -30   0
+#   -0.01 deg =  0   0 -36
+
+sub deg_to_ddmmss {
+  my $dec=shift;                            
+  my $dec_deg=int($dec);                    
+  my $dec_mins=abs($dec-$dec_deg)*60.0;     
+  my $dec_mm=int($dec_mins);                
+  my $dec_secs=abs($dec_mins-$dec_mm)*60.0; 
+  # fix the signs if necessary
+  if ($dec<0) {                             
+    if ($dec_deg==0) {                      
+      $dec_mm*=-1;                          
+      if ($dec_mm==0) {                     
+	$dec_secs*=-1;                      
+      }
+    }
+  }
+  return ($dec_deg,$dec_mm,$dec_secs);
 }
+
+# may need to handle negative values of DEC.  (But not RA.)
+
+sub dec_str { 
+  my $dec_deg=shift;
+  my ($dd,$mm,$ss)=map { abs($_) } deg_to_ddmmss($dec_deg);
+  if ($dec_deg<0) { return sprintf("-%d %02d %5.2f",$dd,$mm,$ss) } 
+  else            { return sprintf("%+d %02d %5.2f",$dd,$mm,$ss) }
+}
+
+sub ra_str  { return sprintf("%+d %02d %5.2f",deg_to_hhmmss(shift())) }
 
 sub is_number { my $x=shift; return $x=~/\d/ }
 
