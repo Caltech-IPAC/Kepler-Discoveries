@@ -18,7 +18,8 @@ where the scripts are.
 
 =cut
 
-BEGIN { use lib '..'; use_ok('Utilities') }
+BEGIN { use lib '..'; use_ok('Utilities', qw( pi tw nw max uniq identical_arrays is_number
+					      fmod deg_to_hhmmss deg_to_ddmmss ra_str dec_str )) }
 
 sub equal_numeric_arrays {
     my $a=shift;
@@ -43,22 +44,24 @@ sub equal_numeric_arrays {
     return 1;
 }
 
-is( $::M_PI, 4.0*atan2(1.0,1.0), 'M_PI constant set correctly' );
+is( pi(), 4.0*atan2(1.0,1.0), 'PI constant set correctly' );
 
-is( ::tw('  test string  '   ),'test string',  'tw removes leading and trailing space but keeps internal space' );
-is( ::nw('  test string  '   ),'teststring',   'nw removes all space' );
-is( ::tw("\ntest\tstring\t"  ),"test\tstring", 'tw removes "outside" cr and tabs, too' );
-is( ::nw("\ttest\t\nstring\n"),"teststring",   'nw removes internal and external cr and tabs as well' );
+my $PI=pi();
+
+is( tw('  test string  '   ),'test string',  'tw removes leading and trailing space but keeps internal space' );
+is( nw('  test string  '   ),'teststring',   'nw removes all space' );
+is( tw("\ntest\tstring\t"  ),"test\tstring", 'tw removes "outside" cr and tabs, too' );
+is( nw("\ttest\t\nstring\n"),"teststring",   'nw removes internal and external cr and tabs as well' );
 
 is( max( 2,3,4,5,6 ),             6, "max on argument list" );
 is( max( [2,3,4,5,6] ),           6, "max on anonymous array" );
 is( max( 2,2,2 ),                 2, "max on list of flat values" );
-dies_ok { max( \$::M_PI ) }          "max does not allow ref to scalar argument";
+dies_ok { max( \$PI ) }              "max does not allow ref to scalar argument";
 dies_ok { max( { a=>3 } ) }          "max does not allow ref to hash argument";
-is( max( $::M_PI,$::M_PI ), $::M_PI, "two scalar arguments ok for max" );
+is( max( $PI,$PI ), $PI, "two scalar arguments ok for max" );
 
 my @test = (qw( a b c b d a b c e d f ));
-is_deeply( [ sort { $a cmp $b } ::uniq @test ], [qw( a b c d e f )], 'uniq removes duplicate items' );
+is_deeply( [ sort { $a cmp $b } uniq(@test) ], [qw( a b c d e f )], 'uniq removes duplicate items' );
 
 is( identical_arrays( @test,  @test),               1, "same array is identical to itself" );
 is( identical_arrays(\@test, \@test),               1, "same refarray is identical to itself" );
@@ -74,8 +77,8 @@ is( identical_arrays( @test,  [pop @test, @test] ), 0, "re-arranged non-identica
 dies_ok { identical_arrays( @test, () ) }  "two array arguments or refs for identical_arrays:  check second";
 dies_ok { identical_arrays( (), @test ) }  "two array arguments or refs for identical_arrays:  check first";
 dies_ok { identical_arrays( [], () ) }     "two array arguments or refs for identical_arrays:  check both";
-dies_ok { identical_arrays(  $::M_PI,  $::M_PI ) } "identical_arrays does not allow scalar arguments";
-dies_ok { identical_arrays( \$::M_PI, \$::M_PI ) } "identical_arrays does not allow ref to scalar arguments";
+dies_ok { identical_arrays(  $PI,  $PI ) } "identical_arrays does not allow scalar arguments";
+dies_ok { identical_arrays( \$PI, \$PI ) } "identical_arrays does not allow ref to scalar arguments";
 
 
 is( fmod(5.5 ,  3.0), 2.5, 'fmod on a real value over the modulus' );

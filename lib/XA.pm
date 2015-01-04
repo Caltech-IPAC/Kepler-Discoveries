@@ -14,6 +14,7 @@ use warnings;
 use Data::Dumper;
 use LWP::Simple;
 
+use Utilities qw( uniq );
 use XAQ;  # lives in the same path as this module, so should be locatable if this module was.
 
 =head1 Description
@@ -128,7 +129,7 @@ sub tce_data_for_kepoi_name {
 # throw an error if not found.
 
 sub kepler_names      { my $self=shift; return keys %{$self->{N}} }
-sub kepler_stars      { my $self=shift; return ::uniq map { $self->{N}{$_}{kepid} } keys %{$self->{N}} }
+sub kepler_stars      { my $self=shift; return uniq map { $self->{N}{$_}{kepid} } keys %{$self->{N}} }
 sub kepler_multiples  { 
   my $self=shift; 
   return map { $self->{X}{$_}{pl_hostname} } grep { ($self->{X}{$_}{pl_kepflag}==1) && ($self->{X}{$_}{pl_pnum}>1) } keys %{$self->{X}};

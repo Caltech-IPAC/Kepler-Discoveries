@@ -32,7 +32,7 @@ use warnings;
 use Data::Dumper;
 
 use lib "$::top_path/lib";   # use the correct path here
-use Utilities;
+use Utilities qw( nw pi fmod is_number );
 use XA;
 use IPAC_AsciiTable;
 
@@ -102,9 +102,9 @@ sub gen_xml {
   $xml =wrap_xml('name',              $meta->{pl_hostname});
   $xml.=wrap_xml('starRadius',        $meta->{st_rad})       if defined $meta->{st_rad};
   $xml.=wrap_xml('starTemperature',   $meta->{st_teff})      if defined $meta->{st_teff};
-  $xml.=wrap_xml('featuredPlanetName',::nw($meta->{pl_name}));
+  $xml.=wrap_xml('featuredPlanetName',nw($meta->{pl_name}));
 
-  my $pi2 = $::M_PI/2.0;
+  my $pi2 = pi()/2.0;
 
   my $mpxml;
   for my $pname (sort_with_first($meta->{pl_name},keys %{$meta->{planets}})) {
@@ -114,18 +114,18 @@ sub gen_xml {
       unless (defined $pmeta->{$_}) { print STDERR "No $_ parameter for planet $pname.  Skipping...\n"; return undef }
     }
     print STDERR "Loading data for planet $pname:  ",Dumper($pmeta),"\n" if $opt{debug};
-    $pxml = wrap_xml('name',                       ::nw($pname));
+    $pxml = wrap_xml('name',                       nw($pname));
     $pxml.= wrap_xml('semimajorAxis',              $pmeta->{pl_orbsmax});
     $pxml.= wrap_xml('radius',                     $pmeta->{pl_radj});   # JUPITER RADIUS???
     $pxml.= wrap_xml('period',                     $pmeta->{pl_orbper});
     $pxml.= wrap_xml('longitudeOfAscendingNode',   undef // $pi2);  
     $pxml.= wrap_xml('argumentOfPericenter',       undef // $pi2);
-    $pxml.= wrap_xml('inclination',        $pi2 - ($pmeta->{pl_orbincl}  || 0.0) * $::M_PI/180.0);  # offset from pi/2
+    $pxml.= wrap_xml('inclination',        $pi2 - ($pmeta->{pl_orbincl}  || 0.0) * pi()/180.0);  # offset from pi/2
     $pxml.= wrap_xml('eccentricity',               $pmeta->{pl_orbeccen} || 0.0);  # getting null string for this from db
     $pxml.= wrap_xml('transitDuration',            $pmeta->{pl_trandur});
     $pxml.= wrap_xml('meanAnomalyAtTransitMiddle', undef // 0.0);
     if ($meta->{pl_name} eq $pname) {
-      $pxml.='<!-- data for '.::nw($pname).', generated '.$meta->{date}.' -->'."\n";
+      $pxml.='<!-- data for '.nw($pname).', generated '.$meta->{date}.' -->'."\n";
       $pxml.=wrap_xml('dataPoints', "\n".series_xml($time,$data, $filter));
       $pxml.=wrap_xml('curvePoints',"\n".series_xml($time,$model,$filter));
     }

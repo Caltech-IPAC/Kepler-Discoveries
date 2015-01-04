@@ -1,4 +1,6 @@
-package main;
+package Utilities;
+
+use strict;
 
 =head1 Name 
 
@@ -8,14 +10,17 @@ Utilities.pm - Global functions of general use
 
 =cut
 
-use strict;
+use parent qw( Exporter );
+our @EXPORT_OK = qw( pi tw nw uniq max identical_arrays fmod is_number
+		     deg_to_hhmmss deg_to_ddmmss dec_str ra_str );
 
-$::M_PI = 4.0*atan2(1.0,1.0);
+my $PI = 4.0*atan2(1.0,1.0);
 
+sub pi { return $PI }
 sub tw { local $_=shift; s/^\s+//; s/\s+$//; return $_ }  # remove leading and trailing white-space
 sub nw { local $_=shift; s/\s+//g;           return $_ }  # remove all white-space
 
-sub uniq   { keys %{ { map { $_ => 1 } @_ } } }
+sub uniq { keys %{ { map { $_ => 1 } @_ } } }
 
 sub max {
   my $a = (ref $_[0]) ? $_[0] : [ @_ ];

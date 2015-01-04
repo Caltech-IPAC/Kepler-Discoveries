@@ -12,9 +12,9 @@ use strict;
 use feature 'switch';
 # no warnings 'experimental::smartmatch';
 
-use Utilities;
-
 use Data::Dumper;
+
+use Utilities qw( tw identical_arrays );
 
 sub marker_capture {
   local $_=shift;
