@@ -109,6 +109,7 @@ sub gen_xml {
   my $mpxml;
   for my $pname (sort_with_first($meta->{pl_name},keys %{$meta->{planets}})) {
     my $pxml;
+    my $is_featured=($meta->{pl_name} eq $pname);
     my $pmeta=$meta->{planets}{$pname};  
     for (qw( pl_orbsmax pl_trandur pl_radj pl_orbper )) {
       unless (defined $pmeta->{$_}) { print STDERR "No $_ parameter for planet $pname.  Skipping...\n"; return undef }
@@ -118,13 +119,17 @@ sub gen_xml {
     $pxml.= wrap_xml('semimajorAxis',              $pmeta->{pl_orbsmax});
     $pxml.= wrap_xml('radius',                     $pmeta->{pl_radj});   # JUPITER RADIUS???
     $pxml.= wrap_xml('period',                     $pmeta->{pl_orbper});
-    $pxml.= wrap_xml('longitudeOfAscendingNode',   undef // $pi2);  
-    $pxml.= wrap_xml('argumentOfPericenter',       undef // $pi2);
-    $pxml.= wrap_xml('inclination',        $pi2 - ($pmeta->{pl_orbincl}  || 0.0) * pi()/180.0);  # offset from pi/2
-    $pxml.= wrap_xml('eccentricity',               $pmeta->{pl_orbeccen} || 0.0);  # getting null string for this from db
-    $pxml.= wrap_xml('transitDuration',            $pmeta->{pl_trandur});
-    $pxml.= wrap_xml('meanAnomalyAtTransitMiddle', undef // 0.0);
-    if ($meta->{pl_name} eq $pname) {
+    if ($is_featured) {
+      $pxml.= wrap_xml('longitudeOfAscendingNode',   undef // $pi2);  
+      $pxml.= wrap_xml('argumentOfPericenter',       undef // $pi2);
+    }
+    $pxml.= wrap_xml('inclination',               ($pmeta->{pl_orbincl}  ||90.0) * pi()/180.0 );  # edge-on is pi/2
+    $pxml.= wrap_xml('eccentricity',               $pmeta->{pl_orbeccen} ||0.0   );  # getting null string for this from db
+    if ($is_featured) {
+      $pxml.= wrap_xml('transitDuration',            $pmeta->{pl_trandur}*24.0);       # convert from days to hours
+      $pxml.= wrap_xml('meanAnomalyAtTransitMiddle', undef // 0.0);
+    }
+    if ($is_featured) {
       $pxml.='<!-- data for '.nw($pname).', generated '.$meta->{date}.' -->'."\n";
       $pxml.=wrap_xml('dataPoints', "\n".series_xml($time,$data, $filter));
       $pxml.=wrap_xml('curvePoints',"\n".series_xml($time,$model,$filter));
