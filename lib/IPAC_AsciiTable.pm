@@ -9,8 +9,9 @@ IPAC_AsciiTable.pm - Read and write IPAC ASCII format Tables
 =cut
 
 use strict;
+use warnings;
 use feature 'switch';
-# no warnings 'experimental::smartmatch';
+no if $] >= 5.017011, warnings => qw( experimental::smartmatch );
 
 use Data::Dumper;
 
