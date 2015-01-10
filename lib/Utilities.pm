@@ -1,6 +1,8 @@
 package Utilities;
 
 use strict;
+use warnings;
+no if $] >= 5.017011, warnings => qw( experimental::smartmatch );
 
 =head1 Name 
 
@@ -33,10 +35,10 @@ sub max {
 sub identical_arrays(++) {
   my $a=shift;
   my $b=shift;
-  die "First argument is not an array or arrayref" unless ref $a eq 'ARRAY';
+  die "First  argument is not an array or arrayref" unless ref $a eq 'ARRAY';
   die "Second argument is not an array or arrayref" unless ref $b eq 'ARRAY';
   return 0 unless scalar(@$a)==scalar(@$b);
-  for (my $i=0; $i<scalar(@$a); $i++) { return 0 unless $a->[$i]==$b->[$i] }
+  for (my $i=0; $i<scalar(@$a); $i++) { return 0 unless $a->[$i] eq $b->[$i] }
   return 1;
 }
 
