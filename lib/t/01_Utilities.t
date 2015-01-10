@@ -18,8 +18,18 @@ where the scripts are.
 
 =cut
 
-BEGIN { use lib '..'; use_ok('Utilities', qw( pi tw nw max uniq identical_arrays is_number
-					      fmod deg_to_hhmmss deg_to_ddmmss ra_str dec_str )) }
+my $path;
+
+BEGIN {
+  use File::Basename;
+  $path=dirname($0);
+}
+
+BEGIN {
+  use lib "$path/..";
+  use_ok('Utilities', qw( pi tw nw max uniq identical_arrays is_number
+			  fmod deg_to_hhmmss deg_to_ddmmss ra_str dec_str ));
+}
 
 sub equal_numeric_arrays {
     my $a=shift;
@@ -60,8 +70,8 @@ dies_ok { max( \$PI ) }              "max does not allow ref to scalar argument"
 dies_ok { max( { a=>3 } ) }          "max does not allow ref to hash argument";
 is( max( $PI,$PI ), $PI, "two scalar arguments ok for max" );
 
-my @test = (qw( a b c b d a b c e d f ));
-is_deeply( [ sort { $a cmp $b } uniq(@test) ], [qw( a b c d e f )], 'uniq removes duplicate items' );
+my @test = (qw( a b c b d a b 3 c e d f ));
+is_deeply( [ sort { $a cmp $b } uniq(@test) ], [qw( 3 a b c d e f )], 'uniq removes duplicate items' );
 
 is( identical_arrays( @test,  @test),               1, "same array is identical to itself" );
 is( identical_arrays(\@test, \@test),               1, "same refarray is identical to itself" );
