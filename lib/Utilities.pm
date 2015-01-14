@@ -13,7 +13,7 @@ Utilities.pm - Global functions of general use
 =cut
 
 use parent qw( Exporter );
-our @EXPORT_OK = qw( pi tw nw uniq max identical_arrays fmod is_number
+our @EXPORT_OK = qw( pi tw nw uniq max identical_arrays fmod is_number is_numeric_only
 		     deg_to_hhmmss deg_to_ddmmss dec_str ra_str );
 
 my $PI = 4.0*atan2(1.0,1.0);
@@ -96,7 +96,9 @@ sub dec_str {
 
 sub ra_str  { return sprintf("%+d %02d %5.2f",deg_to_hhmmss(shift())) }
 
-sub is_number { my $x=shift; return $x=~/\d/ }
+my $NUMBER_REGEX=' [+-]? (( \d+ [.]? \d* ) | ( [.] \d+ )) ( [eE] [+-]? \d+ )?';
+sub is_number       { my $x=shift; return $x=~/$NUMBER_REGEX/ox }
+sub is_numeric_only { my $x=shift; return $x=~/^$NUMBER_REGEX$/ox }
 
 1;
 

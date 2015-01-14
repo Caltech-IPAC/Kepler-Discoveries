@@ -14,8 +14,11 @@ use feature 'switch';
 no if $] >= 5.017011, warnings => qw( experimental::smartmatch );
 
 use Data::Dumper;
+use POSIX ();
 
-use Utilities qw( tw identical_arrays );
+use Utilities qw( tw identical_arrays is_numeric_only );
+
+# non-member functions
 
 sub marker_capture {
   local $_=shift;
@@ -33,6 +36,115 @@ sub column_capture {
   return @r;
 }
 
+=head2 round_to_length design notes
+
+  round_to_length accepts a number and a maximum field width,
+  and tries to find the best precision way to print the number
+  while enforcing the field width constraint.  
+
+  $x is guaranteed to be in a numeric format, exponential or decimal
+  $l is the field width allowed for representing $x
+  
+  If the field width is enough to fit the string representation of the number,
+  then that representation is returned.  (Not padded.)  The number
+  will be rounded via the sprintf function, so it's just a matter
+  of determining whether to use floating-point or exponential 
+  notation, and how many decimal places to print.  Note that the
+  %g field specifier of printf won't enforce the field width constraint.
+
+    Examples:
+        -134.7892  -- one char for '-', three chars for whole portion,
+                      one char for '.', so # decimal places is field width - 5.
+                      Note that the minimum field width is 3 chars for
+                      non-negative numbers, and 4 chars for negative numbers.
+        -1.2e-05   -- one char for '-' on number, four chars for exponent,
+                      one char for whole part of mantissa,
+                      one for '.', so # decimal places is field width - 7
+                      Note that the minimum field width is 5 chars for
+                      non-negative numbers, and 6 chars for negative numbers.
+
+         Use scientific notation if the field width is less than the non-decimal
+         part of the number (whole-portion for non-negative, whole-portion+1 for negative),
+         and when the precision of scientific notation exceeds that of floating point notation
+         for fractional numbers.  This requires a field width of 4 for non-negative numbers,
+         and 5 for negative numbers:
+
+                Field width of 5:
+                     0.011111: 0.011 vs 1e-02  -- floating point is better
+                     0.001111: 0.001 vs 1e-03  -- equal precision
+                     0.000111: 0.000 vs 1e-04  -- exponential notation is better
+                Field width of 6:
+                     0.001111: 0.0011 vs 1.e-03  -- floating point is better
+                     0.000111: 0.0001 vs 1.e-04  -- equal precision
+                     0.000011: 0.0000 vs 1.e-05  -- exponential notation is better
+                Field width of 7:
+                     0.001111: 0.00111 vs 1.1e-03  -- floating point is better
+                     0.000111: 0.00011 vs 1.1e-04  -- equal precision
+                     0.000011: 0.00001 vs 1.1e-05  -- exponential notation is better
+                Field width of 8:
+                     0.00011111: 0.000111 vs 1.11e-04  -- equal precision
+                     0.00001111: 0.000011 vs 1.11e-05  -- exponential notation is better
+
+          Transition points:  use exponential notation in these abs(x)<1 cases:
+                     x>0, abs(x)<10^-4 and field width >= 6:  decimals = field width - 6
+                     x>0, abs(x)<10^-3 and field width == 5:  decimals = 0
+                     x<0, abs(x)<10^-3 and field width == 6:  decimals = 0
+                     x<0, abs(x)<10^-4 and field width >= 7:  decimals = field width - 7
+
+                     x>0, abs(x)>1, field width < length(int(x)):    decimals = field width - 6
+                     x<0, abs(x)>1, field width < length(int(x))+1:  decimals = field width - 7
+
+           Otherwise, use floating point notation, in which case:  
+                     x>0:  decimals = field width - length(int(x)) - 1
+                     x<0:  decimals = field width - length(int(x)) - 2
+                     
+           '#' cases:
+                     x>0:  field width < lenth(int(x))    and field width < 5
+                     x<0:  field width < length(int(x))+1 and field width < 6
+
+=cut
+
+sub round_to_length {
+  my $x=shift;
+  my $l=shift;
+  return $x if length($x)<=$l;
+  return '' if $l<1;    # shouldn't really allow this!
+  return sprintf('%'.$l.'.'.($l>1?$l-2:0).'f',$x) if $x==0;
+  my $wnl=length(int(abs($x)));
+  my $neg= $x<0 ? 1 : 0;
+  my $sci_prec=undef;
+  return '#'x$l if ($l<$wnl+$neg) && ($l<5+$neg);  # can't do sci notation or floating point
+  if    ( ((abs($x)<1e-4) && ($l>=6+$neg)) || ((abs($x)>1) && ($l<$wnl+$neg)) )  { $sci_prec=$l-6-$neg }
+  elsif ( (abs($x)<1e-3) && ($l==5+$neg) )                                       { $sci_prec=0 }
+  return sprintf('%'.$l.'.'.($sci_prec<0?0:$sci_prec).'e',$x) if defined $sci_prec;
+  my $flt_prec=$l-$wnl-1-$neg;
+  return sprintf('%'.$l.'.'.($flt_prec<0?0:$flt_prec).'f',$x);
+}
+
+sub pad_to_length {
+  my $x=shift;
+  my $l=shift;
+  return $x if length($x)>=$l;
+  return ' 'x($l-length($x)).$x;
+}
+
+sub _output_row {
+  my $A=shift;  # data array
+  my $M=shift;  # array of delimiter positions
+  my $d=shift;  # delimiter character
+  my $out="";
+  # need to verify that number of markers and number of 
+  # columns line up here...
+  for my $i (0..$#{$M}-1) {
+    my $fw=$M->[$i+1]-$M->[$i]-1;
+    my $datum=(defined $A->[$i])
+      ? (is_numeric_only($A->[$i]) ? round_to_length($A->[$i],$fw) : substr($A->[$i],0,$fw)) 
+      : '';
+    $out.=$d.pad_to_length($datum,$fw);  # need to truncate $A->[$i] if too long?
+  }
+  return $out.$d;
+}
+
 =head1 Design Notes
 
   S Original source
@@ -44,13 +156,15 @@ sub column_capture {
   U units for each column
   N null values for each column
   M Marker positions for columns
+  I Map of column name -> column number
 
 =cut
 
 sub new_empty {
   my $class=shift;
   my %T;
-  @T{qw( S C K H D T U N M )}=();
+  for (qw( H T U M N S C )) { $T{$_}=[] }  # init array elements
+  for (qw( D K I )        ) { $T{$_}={} }  # init hash  elements
   return bless \%T, $class;
 }
 
@@ -72,8 +186,8 @@ sub new_from_file {
     push @{$T->{S}}, $_;
     # need validation on the file contents -- correct file formats are assumed below
     for ($_) {
-      when (/^[\\]?\s*$/) { next }  # ignore blank lines
-      when (/^\\\s(.*)$/) { push @{$T->{C}}, $1 }
+      when (/^[\\]?\s*$/)             { next }  # ignore blank lines
+      when (/^\\\s(.*)$/)             { push @{$T->{C}}, $1 }
       when (/^\\(\S+)\s*[=]\s*(.*)$/) { $T->{K}{$1}=$2 }
       when (/^[|]/) { 
 	my @cm=marker_capture($_,'|');
@@ -101,6 +215,7 @@ sub new_from_file {
       }
     }
   }
+  for (0..$#{$T->{H}}) { $T->{I}{$T->{H}[$_]}=$_ }
   return $T;
 }
 
@@ -111,13 +226,15 @@ return new_from_file($class,$filename) if defined $filename;
 return new_empty($class);
 }
 
-sub n_cols { my $self=shift; return scalar(@{$self->{H}}) }
-sub col_name { my $self=shift; return $self->{H}[shift()] }
-sub n_data_rows { my $self=shift; return scalar(@{$self->{D}{$self->col_name(0)}}) }
+sub n_cols      { my $self=shift; return scalar(@{$self->{H}}) }
+sub col_name    { my $self=shift; return $_[0] < $self->n_cols() ? $self->{H}[$_[0]] : undef }
+sub col_number  { my $self=shift; return exists $self->{I}{$_[0]} ? $self->{I}{$_[0]} : undef }
+sub n_data_rows { my $self=shift; return $self->n_cols() ? scalar(@{$self->{D}{$self->col_name(0)}}) : 0 }
 
 sub row { # get full data row (specified by number)
   my $self=shift;
   my $r=shift;
+  return undef unless $r<$self->n_data_rows();
   my @col_names=scalar(@_) ? @_ : @{$self->{H}};
   my @o;
   for (@col_names) { push @o, $self->{D}{$_}[$r] }
@@ -127,6 +244,7 @@ sub row { # get full data row (specified by number)
 sub col {  # get full data column (specified by name)
   my $self=shift;
   my $c=shift;
+  return undef unless exists $self->{D}{$c};
   return @{$self->{D}{$c}};
 }
 
@@ -151,33 +269,55 @@ sub add_col { # add a new column of data
   push @{$self->{M}},$max_col_length+$self->{M}[-1];
 }
 
-sub write_row {
+sub output_row {
   my $self=shift;
-  my $fh=shift; # file handle
   my $A=shift;  # data array
-  my $d=shift;  # delimeter
-  # need to verify that number of markers and number of 
-  # columns line up here...
-  for my $i (0..scalar(@$A)-1) {
-    my $fw=$self->{M}[$i+1]-$self->{M}[$i]-1;
-    print $fh sprintf("$d%${fw}s",$A->[$i]);
-  }
-  print $d,"\n";
+  my $d=shift;  # delimiter
+  return _output_row($A,$self->{M},$d);
 }
 
-sub write {  # write out an ascii table
+=head2 set_marker_array
+
+  scans through each column of data to find maximum extent of the column data,
+  does a "max" function on that length and the length of the headers to
+  report a max length for the column, and constructs an array of marker positions
+  from those lengths.
+
+=cut
+
+sub set_marker_array {
+  my $self=shift;
+  my @max_col_length;
+  for my $c (0..$self->n_cols()-1) {
+    my $cn=$self->col_name($c);
+    push @max_col_length,max( map { length($_) } ($self->col($cn),$self->{H}[$c],$self->{T}[$c],$self->{U}[$c],$self->{N}[$c]) );
+  }
+  my @m=( 0 );
+  for (@max_col_length) { push @m, $m[$#m]+$_+1 }
+  $self->{M}=\@m;
+}
+
+sub write {  # write out an ascii table to a filehandle
   my $self=shift;
   my $fh=shift;
+  $self->set_marker_array();
   for (sort { $a cmp $b } keys %{$self->{K}}) {
     print $fh '\\',$_,' = ',$self->{K}{$_},"\n";
   }
-  $self->write_row($fh,$self->{H},'|');
-  $self->write_row($fh,$self->{T},'|');
-  $self->write_row($fh,$self->{U},'|') if defined $self->{U};
-  $self->write_row($fh,$self->{N},'|') if defined $self->{N};
-  for (0..$self->n_data_rows()-1) {
-    $self->write_row($fh,[ $self->row($_) ],' ');
+  for (qw( H T U N )) {
+    print $fh $self->output_row($self->{$_},'|'),"\n";
   }
+  for (0..$self->n_data_rows()-1) {
+    print $fh $self->output_row([ $self->row($_) ],' '),"\n";
+  }
+}
+
+sub write_to_file {
+  my $self=shift;
+  my $file=shift;
+  open(my $fh, '>', $file ) or die "Couldn't create $file:  $!";
+  $self->write($fh);
+  close $fh;
 }
 
 1;

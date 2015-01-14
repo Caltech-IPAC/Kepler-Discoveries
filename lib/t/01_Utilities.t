@@ -27,7 +27,7 @@ BEGIN {
 
 BEGIN {
   use lib "$path/..";
-  use_ok('Utilities', qw( pi tw nw max uniq identical_arrays is_number
+  use_ok('Utilities', qw( pi tw nw max uniq identical_arrays is_number is_numeric_only
 			  fmod deg_to_hhmmss deg_to_ddmmss ra_str dec_str ));
 }
 
@@ -154,6 +154,32 @@ ok( !is_number('a'),      'letter is not a number' );
 ok( is_number('a5'),      'embedded number in the string');
 ok( is_number('-5.3e-7'), 'string version of scientific notation for negative exponent' );
 ok( !is_number(''),       'empty string is not a number' );
+
+ok( is_numeric_only(5.7),         'decimal is numeric only' );
+ok( is_numeric_only(6),           'integer is numeric only' );
+ok( is_numeric_only(-4),          'negative integer is numeric only' );
+ok( is_numeric_only(-5.7),        'negative decimal is numeric only' );
+ok( is_numeric_only('-5.7'),      'string version of negative decimal is numeric only' );
+ok( is_numeric_only('+5.7'),      'string version of positive decimal is numeric only' );
+ok( is_numeric_only(5.3e7),       'scientific notation is numeric only' );
+ok( is_numeric_only(-5.3e7),      'scientific notation for negative number is numeric only' );
+ok( is_numeric_only(-5.3e-7),     'scientific notation for negative exponent is numeric only' );
+ok( is_numeric_only('5.3e7'),     'string version of scientific notation is numeric only' );
+ok( is_numeric_only('-5.3e7'),    'string version of scientific notation for negative number is numeric only' );
+ok( is_numeric_only('-5.3e-7'),   'string version of scientific notation for negative exponent is numeric only' );
+ok( is_numeric_only('+5.3e7'),    'string version of scientific notation for positive number is numeric only' );
+ok( is_numeric_only('-5.3e+7'),   'string version of scientific notation for positive exponent is numeric only' );
+ok( is_numeric_only('-5.3E+7'),   'string version of scientific notation for exponent with E is numeric only' );
+
+ok( !is_numeric_only(' 6'),       'leading white space is not numeric only' );
+ok( !is_numeric_only('6 '),       'trailing white space is not numeric only' );
+ok( !is_numeric_only('6 3'),      'embedded white space is not numeric only' );
+ok( !is_numeric_only('+ 5.3e7'),  'white space after sign is not numeric only' );
+ok( !is_numeric_only('+5.3 e7'),  'white space before exponent is not numeric only' );
+ok( !is_numeric_only('+5.3e 7'),  'white space after e is not numeric only' );
+ok( !is_numeric_only('+5.3e.7'),  'extra decimal is not numeric only' );
+ok( !is_numeric_only('-5.3eE+7'), 'extra exponent char is not numeric only' );
+ok( !is_numeric_only('-5.3g+7'),  'other exponent char (g) is not numeric only' );
 
 done_testing;
 
