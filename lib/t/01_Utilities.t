@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use Test::More;
+use Test::More tests => 10;
 use Test::Exception;
 
 =head1 Name - 01_Utilities.t
@@ -54,134 +54,147 @@ sub equal_numeric_arrays {
     return 1;
 }
 
-is( pi(), 4.0*atan2(1.0,1.0), 'PI constant set correctly' );
-
 my $PI=pi();
+is( $PI, 4.0*atan2(1.0,1.0), 'PI constant set correctly' );
 
-is( tw('  test string  '   ),'test string',  'tw removes leading and trailing space but keeps internal space' );
-is( nw('  test string  '   ),'teststring',   'nw removes all space' );
-is( tw("\ntest\tstring\t"  ),"test\tstring", 'tw removes "outside" cr and tabs, too' );
-is( nw("\ttest\t\nstring\n"),"teststring",   'nw removes internal and external cr and tabs as well' );
+subtest "tw and nw" => sub {
+  is( tw('  test string  '   ),'test string',  'tw removes leading and trailing space but keeps internal space' );
+  is( nw('  test string  '   ),'teststring',   'nw removes all space' );
+  is( tw("\ntest\tstring\t"  ),"test\tstring", 'tw removes "outside" cr and tabs, too' );
+  is( nw("\ttest\t\nstring\n"),"teststring",   'nw removes internal and external cr and tabs as well' );
+};
 
-is( max( 2,3,4,5,6 ),             6, "max on argument list" );
-is( max( [2,3,4,5,6] ),           6, "max on anonymous array" );
-is( max( 2,2,2 ),                 2, "max on list of flat values" );
-dies_ok { max( \$PI ) }              "max does not allow ref to scalar argument";
-dies_ok { max( { a=>3 } ) }          "max does not allow ref to hash argument";
-is( max( $PI,$PI ), $PI, "two scalar arguments ok for max" );
+subtest "max" => sub {
+  is( max( 2,3,4,5,6 ),             6, "max on argument list" );
+  is( max( [2,3,4,5,6] ),           6, "max on anonymous array" );
+  is( max( 2,2,2 ),                 2, "max on list of flat values" );
+  dies_ok { max( \$PI ) }              "max does not allow ref to scalar argument";
+  dies_ok { max( { a=>3 } ) }          "max does not allow ref to hash argument";
+  is( max( $PI,$PI ), $PI, "two scalar arguments ok for max" );
+};
 
-my @test = (qw( a b c b d a b 3 c e d f ));
-is_deeply( [ sort { $a cmp $b } uniq(@test) ], [qw( 3 a b c d e f )], 'uniq removes duplicate items' );
+subtest "uniq" => sub {
+  my @test = (qw( a b c b d a b 3 c e d f ));
+  is_deeply( [ sort { $a cmp $b } uniq(@test) ], [qw( 3 a b c d e f )], 'uniq removes duplicate items' );
+};
 
-is( identical_arrays( @test,  @test),               1, "same array is identical to itself" );
-is( identical_arrays(\@test, \@test),               1, "same refarray is identical to itself" );
-is( identical_arrays(\@test,  @test),               1, "refarray is identical to array" );
-is( identical_arrays( @test, \@test),               1, "same array is identical to itself as refarray" );
-is( identical_arrays( [],     [] ),                 1, "empty arrays are identical" );
-is( identical_arrays( @test,  [] ),                 0, "non-empty array not identical to empty array" );
-is( identical_arrays(\@test,  [] ),                 0, "non-empty refarray not identical to empty array" );
-is( identical_arrays( [],    \@test ),              0, "non-empty array not identical to empty refarray" );
-is( identical_arrays( @test,  [@test,'b'] ),        0, "almost identical arrays with one extra element are not identical" );
-is( identical_arrays( @test,  [pop @test, @test] ), 0, "re-arranged non-identical arrays not identical" );
+subtest "identical_arrays" => sub {
+  my @test = (qw( a b c b d a b 3 c e d f ));
+  is( identical_arrays( @test,  @test),               1, "same array is identical to itself" );
+  is( identical_arrays(\@test, \@test),               1, "same refarray is identical to itself" );
+  is( identical_arrays(\@test,  @test),               1, "refarray is identical to array" );
+  is( identical_arrays( @test, \@test),               1, "same array is identical to itself as refarray" );
+  is( identical_arrays( [],     [] ),                 1, "empty arrays are identical" );
+  is( identical_arrays( @test,  [] ),                 0, "non-empty array not identical to empty array" );
+  is( identical_arrays(\@test,  [] ),                 0, "non-empty refarray not identical to empty array" );
+  is( identical_arrays( [],    \@test ),              0, "non-empty array not identical to empty refarray" );
+  is( identical_arrays( @test,  [@test,'b'] ),        0, "almost identical arrays with one extra element are not identical" );
+  is( identical_arrays( @test,  [pop @test, @test] ), 0, "re-arranged non-identical arrays not identical" );
+  
+  dies_ok { identical_arrays( @test, () ) }  "two array arguments or refs for identical_arrays:  check second";
+  dies_ok { identical_arrays( (), @test ) }  "two array arguments or refs for identical_arrays:  check first";
+  dies_ok { identical_arrays( [], () ) }     "two array arguments or refs for identical_arrays:  check both";
+  dies_ok { identical_arrays(  $PI,  $PI ) } "identical_arrays does not allow scalar arguments";
+  dies_ok { identical_arrays( \$PI, \$PI ) } "identical_arrays does not allow ref to scalar arguments";
+};
 
-dies_ok { identical_arrays( @test, () ) }  "two array arguments or refs for identical_arrays:  check second";
-dies_ok { identical_arrays( (), @test ) }  "two array arguments or refs for identical_arrays:  check first";
-dies_ok { identical_arrays( [], () ) }     "two array arguments or refs for identical_arrays:  check both";
-dies_ok { identical_arrays(  $PI,  $PI ) } "identical_arrays does not allow scalar arguments";
-dies_ok { identical_arrays( \$PI, \$PI ) } "identical_arrays does not allow ref to scalar arguments";
+subtest "fmod" => sub {
+  is( fmod(5.5 ,  3.0), 2.5, 'fmod on a real value over the modulus' );
+  is( fmod(2.5 ,  3.0), 2.5, 'fmod on a real value under the modulus');
+  is( fmod(0.0 ,  3.0), 0.0, 'fmod on zero' );
+  is( fmod(-0.5,  3.0), 2.5, 'fmod on negative value under the modulus' );
+  is( fmod(-4.0,  3.0), 2.0, 'fmod on negative value over the modulus'  );
+  
+  # all the numbers should be the same with a negative modulus
+  is( fmod(5.5 , -3.0), 2.5, 'fmod on a real value over the negative modulus' );
+  is( fmod(2.5 , -3.0), 2.5, 'fmod on a real value under the negative modulus');
+  is( fmod(0.0 , -3.0), 0.0, 'fmod on zero with negative modulus' );
+  is( fmod(-0.5, -3.0), 2.5, 'fmod on negative value under the negative modulus' );
+  is( fmod(-4.0, -3.0), 2.0, 'fmod on negative value over the negative modulus'  );
+};
 
+subtest "deg_to_hhmmss and deg_to_ddmmss" => sub {
+  equal_numeric_arrays( [ deg_to_hhmmss( 90.0) ], [ ( 6,  0,  0.0) ],  'Conversion of  RA from DEG to HHMMSS' );
+  equal_numeric_arrays( [ deg_to_hhmmss(-90.0) ], [ (18,  0,  0.0) ],  'Conversion of -RA from DEG to HHMMSS' );
+  equal_numeric_arrays( [ deg_to_hhmmss(  7.5) ], [ ( 0, 30,  0.0 ) ], 'Convert fractional RA from DEG to HHMMMSS');
+  equal_numeric_arrays( [ deg_to_hhmmss(15.0/3600.00) ],  
+			[ ( 0,  0,  1.0 ) ], 'Convert one sec of RA from DEG to HHMMMSS');
+  equal_numeric_arrays( [ deg_to_hhmmss(-15.0/3600.00) ], 
+			[ (23, 59, 59.0 ) ], 'Convert -1 sec of RA from DEG to HHMMMSS');
+  equal_numeric_arrays( [ deg_to_ddmmss( 90.0) ], [ ( 90,  0,  0.0) ],  'Conversion of  DEC from DEG to DDMMSS' );
+  equal_numeric_arrays( [ deg_to_ddmmss(-90.0) ], [ (-90,  0,  0.0) ],  'Conversion of -DEC from DEG to DDMMSS' );
+  equal_numeric_arrays( [ deg_to_ddmmss(  7.5) ], [ (  7, 30,  0.0 ) ], 'Convert fractional DEC from DEG to DDMMMSS');
+  equal_numeric_arrays( [ deg_to_ddmmss( 1.0/3600.00) ],  
+			[ (  0,  0,  1.0 ) ], 'Convert  1 sec of DEC from DEG to DDMMMSS');
+  equal_numeric_arrays( [ deg_to_ddmmss(-1.0/3600.00) ],  		       
+			[ (  0,  0, -1.0 ) ], 'Convert -1 sec of DEC from DEG to DDMMMSS');
+  equal_numeric_arrays( [ deg_to_ddmmss(-1.0/60.00)   ],  		       
+			[ (  0, -1,  0.0 ) ], 'Convert -1 min of DEC from DEG to DDMMMSS');
+  equal_numeric_arrays( [ deg_to_ddmmss(-1.0/60.00-1.0/3600.0) ],  
+			[ (  0, -1, 1.0 ) ], 'Convert -1 min and 1 sec of DEC from DEG to DDMMMSS');
+  equal_numeric_arrays( [ deg_to_ddmmss(-1-1.0/60.00-1.0/3600.0) ],  
+			[ ( -1,  1, 1.0 ) ], 'Convert -1 deg, 1 min, 1 sec of DEC from DEG to DDMMMSS');
+  equal_numeric_arrays( [ deg_to_ddmmss(-1+1.0/3600.0) ],  
+			[ (  0, -59, 59.0 ) ], 'Convert -1 deg less 1 sec of DEC from DEG to DDMMMSS');
+};
 
-is( fmod(5.5 ,  3.0), 2.5, 'fmod on a real value over the modulus' );
-is( fmod(2.5 ,  3.0), 2.5, 'fmod on a real value under the modulus');
-is( fmod(0.0 ,  3.0), 0.0, 'fmod on zero' );
-is( fmod(-0.5,  3.0), 2.5, 'fmod on negative value under the modulus' );
-is( fmod(-4.0,  3.0), 2.0, 'fmod on negative value over the modulus'  );
+subtest "ra_str and dec_str" => sub {
+  is( ra_str( 90.0),          "+6 00  0.00", 'Conversion of  RA from DEG to HHMMSS string' );
+  is( ra_str(-90.0),         "+18 00  0.00", 'Conversion of -RA from DEG to HHMMSS string' );
+  is( ra_str(  7.5),          "+0 30  0.00", 'Convert fractional RA from DEG to HHMMMSS string');
+  is( ra_str(15.0/3600.00),   "+0 00  1.00", 'Convert one sec of RA from DEG to HHMMMSS string');
+  is( ra_str(-15.0/3600.00), "+23 59 59.00", 'Convert -1 sec of RA from DEG to HHMMMSS string');
+  is( dec_str( 90.0),         "+90 00  0.00", 'Conversion of  DEC from DEG to DDMMSS' );
+  is( dec_str(-90.0),         "-90 00  0.00", 'Conversion of -DEC from DEG to DDMMSS' );
+  is( dec_str(  7.5),          "+7 30  0.00", 'Convert fractional DEC from DEG to DDMMMSS string');
+  is( dec_str( 1.0/3600.00),   "+0 00  1.00", 'Convert  1 sec of DEC from DEG to DDMMMSS string');
+  is( dec_str(-1.0/3600.00),   "-0 00  1.00", 'Convert -1 sec of DEC from DEG to DDMMMSS string');
+  is( dec_str(-1.0/60.00),    "-0 01  0.00", 'Convert -1 min of DEC from DEG to DDMMMSS string');
+  is( dec_str(-1.0/60.00-1.0/3600.0),  "-0 01  1.00", 'Convert -1 min +1 sec of DEC from DEG to DDMMMSS string');
+  is( dec_str(-1-1.0/60.00-1.0/3600.0),"-1 01  1.00", 'Convert -1 deg, 1 min, 1 sec of DEC from DEG to DDMMMSS string');
+  is( dec_str(-1+1.0/3600.0),  "-0 59 59.00", 'Convert -1 deg less 1 sec of DEC from DEG to DDMMMSS string');
+};
 
-# all the numbers should be the same with a negative modulus
-is( fmod(5.5 , -3.0), 2.5, 'fmod on a real value over the negative modulus' );
-is( fmod(2.5 , -3.0), 2.5, 'fmod on a real value under the negative modulus');
-is( fmod(0.0 , -3.0), 0.0, 'fmod on zero with negative modulus' );
-is( fmod(-0.5, -3.0), 2.5, 'fmod on negative value under the negative modulus' );
-is( fmod(-4.0, -3.0), 2.0, 'fmod on negative value over the negative modulus'  );
-
-equal_numeric_arrays( [ deg_to_hhmmss( 90.0) ], [ ( 6,  0,  0.0) ],  'Conversion of  RA from DEG to HHMMSS' );
-equal_numeric_arrays( [ deg_to_hhmmss(-90.0) ], [ (18,  0,  0.0) ],  'Conversion of -RA from DEG to HHMMSS' );
-equal_numeric_arrays( [ deg_to_hhmmss(  7.5) ], [ ( 0, 30,  0.0 ) ], 'Convert fractional RA from DEG to HHMMMSS');
-equal_numeric_arrays( [ deg_to_hhmmss(15.0/3600.00) ],  
-		      [ ( 0,  0,  1.0 ) ], 'Convert one sec of RA from DEG to HHMMMSS');
-equal_numeric_arrays( [ deg_to_hhmmss(-15.0/3600.00) ], 
-		      [ (23, 59, 59.0 ) ], 'Convert -1 sec of RA from DEG to HHMMMSS');
-equal_numeric_arrays( [ deg_to_ddmmss( 90.0) ], [ ( 90,  0,  0.0) ],  'Conversion of  DEC from DEG to DDMMSS' );
-equal_numeric_arrays( [ deg_to_ddmmss(-90.0) ], [ (-90,  0,  0.0) ],  'Conversion of -DEC from DEG to DDMMSS' );
-equal_numeric_arrays( [ deg_to_ddmmss(  7.5) ], [ (  7, 30,  0.0 ) ], 'Convert fractional DEC from DEG to DDMMMSS');
-equal_numeric_arrays( [ deg_to_ddmmss( 1.0/3600.00) ],  
-		      [ (  0,  0,  1.0 ) ], 'Convert  1 sec of DEC from DEG to DDMMMSS');
-equal_numeric_arrays( [ deg_to_ddmmss(-1.0/3600.00) ],  		       
-		      [ (  0,  0, -1.0 ) ], 'Convert -1 sec of DEC from DEG to DDMMMSS');
-equal_numeric_arrays( [ deg_to_ddmmss(-1.0/60.00)   ],  		       
-		      [ (  0, -1,  0.0 ) ], 'Convert -1 min of DEC from DEG to DDMMMSS');
-equal_numeric_arrays( [ deg_to_ddmmss(-1.0/60.00-1.0/3600.0) ],  
-		      [ (  0, -1, 1.0 ) ], 'Convert -1 min and 1 sec of DEC from DEG to DDMMMSS');
-equal_numeric_arrays( [ deg_to_ddmmss(-1-1.0/60.00-1.0/3600.0) ],  
-		      [ ( -1,  1, 1.0 ) ], 'Convert -1 deg, 1 min, 1 sec of DEC from DEG to DDMMMSS');
-equal_numeric_arrays( [ deg_to_ddmmss(-1+1.0/3600.0) ],  
-		      [ (  0, -59, 59.0 ) ], 'Convert -1 deg less 1 sec of DEC from DEG to DDMMMSS');
-
-is( ra_str( 90.0),          "+6 00  0.00", 'Conversion of  RA from DEG to HHMMSS string' );
-is( ra_str(-90.0),         "+18 00  0.00", 'Conversion of -RA from DEG to HHMMSS string' );
-is( ra_str(  7.5),          "+0 30  0.00", 'Convert fractional RA from DEG to HHMMMSS string');
-is( ra_str(15.0/3600.00),   "+0 00  1.00", 'Convert one sec of RA from DEG to HHMMMSS string');
-is( ra_str(-15.0/3600.00), "+23 59 59.00", 'Convert -1 sec of RA from DEG to HHMMMSS string');
-is( dec_str( 90.0),         "+90 00  0.00", 'Conversion of  DEC from DEG to DDMMSS' );
-is( dec_str(-90.0),         "-90 00  0.00", 'Conversion of -DEC from DEG to DDMMSS' );
-is( dec_str(  7.5),          "+7 30  0.00", 'Convert fractional DEC from DEG to DDMMMSS string');
-is( dec_str( 1.0/3600.00),   "+0 00  1.00", 'Convert  1 sec of DEC from DEG to DDMMMSS string');
-is( dec_str(-1.0/3600.00),   "-0 00  1.00", 'Convert -1 sec of DEC from DEG to DDMMMSS string');
-is( dec_str(-1.0/60.00),    "-0 01  0.00", 'Convert -1 min of DEC from DEG to DDMMMSS string');
-is( dec_str(-1.0/60.00-1.0/3600.0),  "-0 01  1.00", 'Convert -1 min +1 sec of DEC from DEG to DDMMMSS string');
-is( dec_str(-1-1.0/60.00-1.0/3600.0),"-1 01  1.00", 'Convert -1 deg, 1 min, 1 sec of DEC from DEG to DDMMMSS string');
-is( dec_str(-1+1.0/3600.0),  "-0 59 59.00", 'Convert -1 deg less 1 sec of DEC from DEG to DDMMMSS string');
-
-ok( is_number(5),       'integer is a number' );
-ok( is_number(-5),      'negative integer is a number' );
-ok( is_number(5.5),     'positive real number is a number' );
-ok( is_number(-5.5),    'negative real number is a number' );
-ok( is_number(5.3e7),   'scientific notation is a number' );
-ok( is_number(-5.3e7),  'scientific notation for negative number' );
-ok( is_number(-5.3e-7), 'scientific notation for negative exponent' );
-
-ok( !is_number('a'),      'letter is not a number' );
-ok( is_number('a5'),      'embedded number in the string');
-ok( is_number('-5.3e-7'), 'string version of scientific notation for negative exponent' );
-ok( !is_number(''),       'empty string is not a number' );
-
-ok( is_numeric_only(5.7),         'decimal is numeric only' );
-ok( is_numeric_only(6),           'integer is numeric only' );
-ok( is_numeric_only(-4),          'negative integer is numeric only' );
-ok( is_numeric_only(-5.7),        'negative decimal is numeric only' );
-ok( is_numeric_only('-5.7'),      'string version of negative decimal is numeric only' );
-ok( is_numeric_only('+5.7'),      'string version of positive decimal is numeric only' );
-ok( is_numeric_only(5.3e7),       'scientific notation is numeric only' );
-ok( is_numeric_only(-5.3e7),      'scientific notation for negative number is numeric only' );
-ok( is_numeric_only(-5.3e-7),     'scientific notation for negative exponent is numeric only' );
-ok( is_numeric_only('5.3e7'),     'string version of scientific notation is numeric only' );
-ok( is_numeric_only('-5.3e7'),    'string version of scientific notation for negative number is numeric only' );
-ok( is_numeric_only('-5.3e-7'),   'string version of scientific notation for negative exponent is numeric only' );
-ok( is_numeric_only('+5.3e7'),    'string version of scientific notation for positive number is numeric only' );
-ok( is_numeric_only('-5.3e+7'),   'string version of scientific notation for positive exponent is numeric only' );
-ok( is_numeric_only('-5.3E+7'),   'string version of scientific notation for exponent with E is numeric only' );
-
-ok( !is_numeric_only(' 6'),       'leading white space is not numeric only' );
-ok( !is_numeric_only('6 '),       'trailing white space is not numeric only' );
-ok( !is_numeric_only('6 3'),      'embedded white space is not numeric only' );
-ok( !is_numeric_only('+ 5.3e7'),  'white space after sign is not numeric only' );
-ok( !is_numeric_only('+5.3 e7'),  'white space before exponent is not numeric only' );
-ok( !is_numeric_only('+5.3e 7'),  'white space after e is not numeric only' );
-ok( !is_numeric_only('+5.3e.7'),  'extra decimal is not numeric only' );
-ok( !is_numeric_only('-5.3eE+7'), 'extra exponent char is not numeric only' );
-ok( !is_numeric_only('-5.3g+7'),  'other exponent char (g) is not numeric only' );
-
-done_testing;
+subtest "is_number and is_numeric_only" => sub {
+  ok( is_number(5),       'integer is a number' );
+  ok( is_number(-5),      'negative integer is a number' );
+  ok( is_number(5.5),     'positive real number is a number' );
+  ok( is_number(-5.5),    'negative real number is a number' );
+  ok( is_number(5.3e7),   'scientific notation is a number' );
+  ok( is_number(-5.3e7),  'scientific notation for negative number' );
+  ok( is_number(-5.3e-7), 'scientific notation for negative exponent' );
+  
+  ok( !is_number('a'),      'letter is not a number' );
+  ok( is_number('a5'),      'embedded number in the string');
+  ok( is_number('-5.3e-7'), 'string version of scientific notation for negative exponent' );
+  ok( !is_number(''),       'empty string is not a number' );
+  
+  ok( is_numeric_only(5.7),         'decimal is numeric only' );
+  ok( is_numeric_only(6),           'integer is numeric only' );
+  ok( is_numeric_only(-4),          'negative integer is numeric only' );
+  ok( is_numeric_only(-5.7),        'negative decimal is numeric only' );
+  ok( is_numeric_only('-5.7'),      'string version of negative decimal is numeric only' );
+  ok( is_numeric_only('+5.7'),      'string version of positive decimal is numeric only' );
+  ok( is_numeric_only(5.3e7),       'scientific notation is numeric only' );
+  ok( is_numeric_only(-5.3e7),      'scientific notation for negative number is numeric only' );
+  ok( is_numeric_only(-5.3e-7),     'scientific notation for negative exponent is numeric only' );
+  ok( is_numeric_only('5.3e7'),     'string version of scientific notation is numeric only' );
+  ok( is_numeric_only('-5.3e7'),    'string version of scientific notation for negative number is numeric only' );
+  ok( is_numeric_only('-5.3e-7'),   'string version of scientific notation for negative exponent is numeric only' );
+  ok( is_numeric_only('+5.3e7'),    'string version of scientific notation for positive number is numeric only' );
+  ok( is_numeric_only('-5.3e+7'),   'string version of scientific notation for positive exponent is numeric only' );
+  ok( is_numeric_only('-5.3E+7'),   'string version of scientific notation for exponent with E is numeric only' );
+  
+  ok( !is_numeric_only(' 6'),       'leading white space is not numeric only' );
+  ok( !is_numeric_only('6 '),       'trailing white space is not numeric only' );
+  ok( !is_numeric_only('6 3'),      'embedded white space is not numeric only' );
+  ok( !is_numeric_only('+ 5.3e7'),  'white space after sign is not numeric only' );
+  ok( !is_numeric_only('+5.3 e7'),  'white space before exponent is not numeric only' );
+  ok( !is_numeric_only('+5.3e 7'),  'white space after e is not numeric only' );
+  ok( !is_numeric_only('+5.3e.7'),  'extra decimal is not numeric only' );
+  ok( !is_numeric_only('-5.3eE+7'), 'extra exponent char is not numeric only' );
+  ok( !is_numeric_only('-5.3g+7'),  'other exponent char (g) is not numeric only' );
+};
 
 =head1 License
 

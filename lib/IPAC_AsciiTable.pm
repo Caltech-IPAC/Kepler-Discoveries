@@ -186,9 +186,9 @@ sub new_from_file {
     push @{$T->{S}}, $_;
     # need validation on the file contents -- correct file formats are assumed below
     for ($_) {
-      when (/^[\\]?\s*$/)             { next }  # ignore blank lines
-      when (/^\\\s(.*)$/)             { push @{$T->{C}}, $1 }
-      when (/^\\(\S+)\s*[=]\s*(.*)$/) { $T->{K}{$1}=$2 }
+      when (/^[\\]?\s*$/)                            { next }  # ignore blank lines
+      when (/^\\\s(.*)$/)                            { push @{$T->{C}}, $1 }
+      when (/^\\(\S+)\s*[=]\s*(["']?)(.*?)(\2)\s*$/) { $T->{K}{$1}=$3 }  # remove matching quotes, if any
       when (/^[|]/) { 
 	my @cm=marker_capture($_,'|');
 	if ($c{M}) { 
@@ -225,6 +225,9 @@ my $filename=shift;
 return new_from_file($class,$filename) if defined $filename;
 return new_empty($class);
 }
+
+sub parm_list   { my $self=shift; return keys %{$self->{K}} }
+sub parm_value  { my $self=shift; return $self->{K}{$_[0]} // undef }
 
 sub n_cols      { my $self=shift; return scalar(@{$self->{H}}) }
 sub col_name    { my $self=shift; return $_[0] < $self->n_cols() ? $self->{H}[$_[0]] : undef }
