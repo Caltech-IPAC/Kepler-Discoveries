@@ -74,6 +74,7 @@ sub result {
     $self->add_query($w);
   }
   my $q=$self->{b}.join("\&",@{$self->{q}});
+  print STDERR "Executing API Query-->$q<--\n";
   return get($q);
 }
 

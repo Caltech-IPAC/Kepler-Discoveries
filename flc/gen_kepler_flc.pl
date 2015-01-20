@@ -40,6 +40,27 @@ use IPAC_AsciiTable;
 
 our %opt;
 
+our $REG_KEPOI_NAME='K0*([1-9]\d*\.\d\d)';  # captures the numeric part
+
+sub msg {
+  my $out=shift();
+  my $label=shift() // '';
+  unless ($label=~/(FAIL)|(DIE)|(RESULT)/i) {
+    return if $label=~/DEBUG/i && !$opt{debug};
+    return if $opt{q};
+  }
+  print STDOUT sprintf('%8s: %s',$label,$out),"\n";
+}
+
+sub fail { msg shift(),'FAIL'; exit; }
+
+sub assert(&$) { 
+  my $test=shift; 
+  my $msg=shift() // '[ Unspecified assertion ]';
+  if (&$test) { msg  $msg, 'DEBUG-OK' }
+  else        { fail $msg }
+}
+
 sub sort_with_first {
   my $first=shift;
   return ($first,sort { $a cmp $b } grep { $_ ne $first } @_);
@@ -54,10 +75,10 @@ sub load_meta {
   my $m;
   for my $pname (@pnames) {
     my $n=$X->keplernames_planet_row($pname);
-    die "No Exoplanet Table Entry Name for $pname!\n" unless $n->{alt_name};
-    print STDERR "Keplernames Planet Row for $pname:\n" if $opt{debug};
+    assert { exists $n->{alt_name} } "Got Exoplanet Table Entry Name for $pname";
+    msg "Keplernames Planet Row for $pname", 'DEBUG';
     my $e=$X->exoplanet_planet_row($n->{alt_name});
-    print STDERR "Exoplanet Planet Row for $n->{alt_name}:\n" if $opt{debug};
+    msg "Exoplanet Planet Row for $n->{alt_name}", 'DEBUG';
     if ($first) {
       # load selected host parameters
       for (qw( pl_hostname st_rad st_teff pl_name )) { $m->{$_}=$e->{$_} }
@@ -82,7 +103,7 @@ sub series_xml {
   my $time=shift;
   my $data=shift;
   my $filt=shift;
-  print STDERR "WARNING***>mis-matched series data:  " unless $#{$time}==$#{$data};
+  assert { $#{$time}==$#{$data} } "Expect time and data to have same array lengths";
   my $xml;
   for my $i (0..$#{$time}) {
     $filt->[$i]=0 unless (is_number($time->[$i]) && is_number($data->[$i]));  # delete NaNs for data & model
@@ -112,9 +133,9 @@ sub gen_xml {
     my $is_featured=($meta->{pl_name} eq $pname);
     my $pmeta=$meta->{planets}{$pname};  
     for (qw( pl_orbsmax pl_trandur pl_radj pl_orbper )) {
-      unless (defined $pmeta->{$_}) { print STDERR "No $_ parameter for planet $pname.  Skipping...\n"; return undef }
+      unless (defined $pmeta->{$_}) { msg "No $_ parameter for planet $pname.  Skipping...", 'WARN'; return undef }
     }
-    print STDERR "Loading data for planet $pname:  ",Dumper($pmeta),"\n" if $opt{debug};
+    msg "Loading data for planet $pname:  ".Dumper($pmeta), 'DEBUG';
     $pxml = wrap_xml('name',                       nw($pname));
     $pxml.= wrap_xml('semimajorAxis',              $pmeta->{pl_orbsmax});
     $pxml.= wrap_xml('radius',                     $pmeta->{pl_radj});   # JUPITER RADIUS???
@@ -126,7 +147,7 @@ sub gen_xml {
     $pxml.= wrap_xml('inclination',               ($pmeta->{pl_orbincl}  ||90.0) * pi()/180.0 );  # edge-on is pi/2
     $pxml.= wrap_xml('eccentricity',               $pmeta->{pl_orbeccen} ||0.0   );  # getting null string for this from db
     if ($is_featured) {
-      $pxml.= wrap_xml('transitDuration',            $pmeta->{pl_trandur}*24.0);       # convert from days to hours
+      $pxml.= wrap_xml('transitDuration',           ($pmeta->{pl_trandur}||0.0)*24.0);       # convert from days to hours
       $pxml.= wrap_xml('meanAnomalyAtTransitMiddle', undef // 0.0);
     }
     if ($is_featured) {
@@ -194,8 +215,6 @@ use Getopt::Long;
 
 GetOptions (\%opt, 'q|quiet', 'tbl=s', 'keep_tbl', 'max=i', 'debug');
 
-print STDERR "perldoc $0 for help.\n" unless $opt{q};
-
 die "Usage:  $0 kepler-name" unless scalar(@ARGV);
 
 my $kname;
@@ -209,98 +228,96 @@ my $np=scalar(@r);                      # number of planets
 
 my $i_np = 0;       # counter
 
-print STDERR "Loaded $np confirmed planets\n" unless $opt{q};
+msg "Loaded $np confirmed planets";
 
+# could iterate the following over all planets, using:
 # for $kname (sort { $a cmp $b } @r) {
 
-  last if defined $opt{max} && (++$i_np>$opt{max});
+last if defined $opt{max} && (++$i_np>$opt{max});
 
-  my $n=$X->keplernames_planet_row($kname);
-  die "No Exoplanet Table Entry Name!\n" unless $n->{alt_name};
-  print STDERR "Keplernames Planet Row for $kname:\n" unless $opt{q};
-#  print STDERR Dumper($n) unless $opt{q};
+my $n=$X->keplernames_planet_row($kname);
+
+assert { defined $n->{alt_name}   } "$kname:  Got Exoplanet Table Entry Name";
+assert { defined $n->{kepoi_name} } "$kname:  Got Kepler Name:  $n->{kepoi_name}";
+	 
+msg "Keplernames Planet Row for $kname:";
+msg Dumper($n), 'DEBUG';
+
+my ($kepoi_number)=($n->{kepoi_name}=~/$REG_KEPOI_NAME/o);  # undef if no match
+assert { defined $kepoi_number && $kepoi_number=~/\d+[.]\d{2}/ }
+  "$kname:  valid kepoi number from kepoi_name ($n->{kepoi_name} in Exoplanet Table)";
+
+my $e=$X->exoplanet_planet_row($n->{alt_name});
+msg "Exoplanet Planet Row for $n->{alt_name}:";
+msg Dumper($e), 'DEBUG';
   
-  my $e=$X->exoplanet_planet_row($n->{alt_name});
-  print STDERR "Exoplanet Planet Row for $n->{alt_name}:\n" unless $opt{q};
-  # print STDERR Dumper($e) unless $opt{q};
+# this is a bit awkward, but match the hostname against all the known planets,
+# then sort them with the requested planet first in order
+
+msg "There should be $e->{pl_pnum} planets in this system";
+my @pnames=sort_with_first($kname,grep /$e->{pl_hostname}\s+[b-z]+/, @r);
+msg "Found the following:  ".join(' ',@pnames);
+
+
+assert { $n->{koi_list_flag} eq 'YES' } "$kname:  have data for $n->{kepoi_name}: koi_list_flag=$n->{koi_list_flag}";
+
+my $tce_data=$X->tce_data_for_kepoi_name($n->{kepoi_name});
+msg Dumper($tce_data), 'DEBUG';
+
+assert { defined $tce_data and scalar(keys %$tce_data) } "$kname:  TCE data available for $n->{kepoi_name}";
+assert { scalar(keys %$tce_data)==1 } "$kname:  Should be only one TCE for $n->{kepoi_name}";
+my ($tce)=keys %$tce_data;   # should be only one!
+
+my $period=$tce_data->{$tce}{tce_period};
+my $offset=$tce_data->{$tce}{tce_time0bk};
+my $duration=$tce_data->{$tce}{tce_duration};
+
+msg "Fetching DV Time Series data for $n->{kepid} and tce $tce";
+my $dv_data=$X->dv_series($n->{kepid},$tce);
+unless (defined $dv_data) {
+  fail "$kname:  Couldn't extract DV series from $n->{kepid} and tce $tce";
+}
+
+my $tempfile="$n->{kepid}_$tce.$$.tbl";
+open TEMP, ">$tempfile" or fail "Couldn't create $tempfile:  $!";
+print TEMP $dv_data, "\n";
+close TEMP;
   
-  # this is a bit awkward, but match the hostname against all the known planets,
-  # then sort them with the requested planet first in order
+my $meta=load_meta($X,@pnames);   # gather all info, and process into meta data for XML writing
 
-  print STDERR "There should be $e->{pl_pnum} planets in this system\n" unless $opt{q};
-  my @pnames=sort_with_first($kname,grep /$e->{pl_hostname}\s+[b-z]+/, @r);
-  print STDERR "Found the following:  ",join(' ',@pnames),"\n" unless $opt{q};
+my $T=new IPAC_AsciiTable $tempfile;
 
-  my ($kepoi_number)=($n->{kepoi_name}=~/K0*([1-9]\d*\.\d\d)/);  # undef if no match
-  
-  if ($n->{koi_list_flag} cmp 'YES') {  # if koi_list_flag is false, then no data
-    print STDERR "No DV data for $n->{kepoi_name}; koi_list_flag=$n->{koi_list_flag}\n";
-    next;
-  } 
-  
-  my $tce_data=$X->tce_data_for_kepoi_name($n->{kepoi_name});
-  print STDERR Dumper($tce_data) if $opt{debug};
+my $tnc=$T->n_cols();
+my $tnr=$T->n_data_rows();
 
-  unless (defined $tce_data and scalar(keys %$tce_data)) {
-    print STDERR "No TCE data available for $n->{kepoi_name}\n";
-    next;
-  }
+msg "Read in $tnc cols and $tnr rows from $tempfile";
 
-  my ($tce)=keys %$tce_data;   # should be only one!
+my @time=$T->col('TIME');
+my @data  = map { $_+1.0 } $T->col('INIT_FLUX_PL');
+my @model = map { $_+1.0 } $T->col('MODEL_LC_PL');
 
-  my $period=$tce_data->{$tce}{tce_period};
-  my $offset=$tce_data->{$tce}{tce_time0bk};
-  my $duration=$tce_data->{$tce}{tce_duration};
+my $PI=4.0*atan2(1.0,1.0);
 
-  print STDERR "Fetching DV Time Series data for $n->{kepid} and tce $tce\n";
-  my $dv_data=$X->dv_series($n->{kepid},$tce);
-  unless (defined $dv_data) {
-    print STDERR "***>Couldn't extract DV series from $n->{kepid} and tce $tce";
-    next;
-  }
+# need to restrict range of data to +/- 1 transit duration; probably use filter array
+my @folded_time=map { $_*2.0*$PI/$period - $PI } map { fmod($_-$offset+$period/2.0,$period) } @time;
+my $phs_rad=$duration/24.0 * 2.0 * $PI / $period;
+my @time_filter=map { ($_>$phs_rad)||($_<-$phs_rad) ? 0 : 1 } @folded_time;   # only +/- transit duration from center phase
 
-  my $tempfile="$n->{kepid}_$tce.$$.tbl";
-  open TEMP, ">$tempfile" or die "Couldn't create $tempfile";
-  print TEMP $dv_data, "\n";
-  close TEMP;
-  
-  my $meta=load_meta($X,@pnames);   # gather all info, and process into meta data for XML writing
+# need to sort the phases
+my @sort_indices=sort { $folded_time[$a]<=>$folded_time[$b] } (0..$#folded_time);
 
-  my $T=new IPAC_AsciiTable $tempfile;
-  
-  my $tnc=$T->n_cols();
-  my $tnr=$T->n_data_rows();
-  
-  print STDERR "Read in $tnc cols and $tnr rows from $tempfile\n";
+@folded_time=@folded_time[@sort_indices];
+@data       =@data[@sort_indices];
+@model      =@model[@sort_indices];
+@time_filter=@time_filter[@sort_indices];
 
-  my @time=$T->col('TIME');
-  my @data  = map { $_+1.0 } $T->col('INIT_FLUX_PL');
-  my @model = map { $_+1.0 } $T->col('MODEL_LC_PL');
+my $xml_out=lc($kname);  $xml_out=~s/(\s+|-)//g; $xml_out.='.xml';
+open XML, ">$xml_out" or fail "Couldn't create $xml_out:  $!";
+print XML gen_xml($meta,\@folded_time,\@data,\@model,\@time_filter);
+close XML;
 
-  my $PI=4.0*atan2(1.0,1.0);
-  
-  # need to restrict range of data to +/- 1 transit duration; probably use filter array
-  my @folded_time=map { $_*2.0*$PI/$period - $PI } map { fmod($_-$offset+$period/2.0,$period) } @time;
-  my $phs_rad=$duration/24.0 * 2.0 * $PI / $period;
-  my @time_filter=map { ($_>$phs_rad)||($_<-$phs_rad) ? 0 : 1 } @folded_time;   # only +/- transit duration from center phase
-
-  # need to sort the phases
-  my @sort_indices=sort { $folded_time[$a]<=>$folded_time[$b] } (0..$#folded_time);
-
-  @folded_time=@folded_time[@sort_indices];
-  @data       =@data[@sort_indices];
-  @model      =@model[@sort_indices];
-  @time_filter=@time_filter[@sort_indices];
-
-  my $xml_out=lc($kname);  $xml_out=~s/(\s+|-)//g; $xml_out.='.xml';
-  open XML, ">$xml_out" or die "Couldn't create $xml_out";
-  print XML gen_xml($meta,\@folded_time,\@data,\@model,\@time_filter);
-  close XML;
-
-  print STDERR "Wrote $xml_out for $kname\n" unless $opt{q};
-  unlink $tempfile unless $opt{keep_tbl};   # cleanup
-
-# }
+msg "Wrote $xml_out for $kname", 'RESULT';
+unlink $tempfile unless $opt{keep_tbl};   # cleanup
 
 ###############
 # End of Script

@@ -56,7 +56,7 @@ sub parse_table_by_index {
 	unless scalar(@c)==scalar(@d); # columns of data returned had better match number of column names, or quit.
     my %h;
     for (0..$#c) { $h{$c[$_]}=$d[$_] }  # fill the hash
-    die "index $i not found on row $j for $t" unless exists $h{$i};
+    die "index $i not found on row $j for $t:  ".Dumper($q) unless exists $h{$i};
     die "index $i value ($h{$i}) is not unique at row $j for $t\n-->$r<--\n".Dumper($T) if exists $T->{$h{$i}};
     $T->{$h{$i}}=\%h;
   }
@@ -111,9 +111,11 @@ sub tce_data_for_kepoi_name {
   my @col=qw( kepoi_name kepid koi_tce_plnt_num );
   $x->select_col(@col)->equals_str('kepoi_name',$kepoi_name);
   my $r=parse_table_by_index($col[0], $x->q1_q16_koi(), $x->delim(), "Kepler KOI for $kepoi_name");
-  return undef unless defined $r->{$kepoi_name};
+  unless (defined $r->{$kepoi_name}) { print STDERR "tce_data_for_kepoi_name($kepoi_name):  no result\n"; return undef }
   my $kepid=$r->{$kepoi_name}{kepid};
   my $tce  =$r->{$kepoi_name}{koi_tce_plnt_num};
+  unless ($kepid=~/\d+/) { print STDERR "tce_data_for_kepoi_name($kepoi_name):  no kepid\n"; return undef }
+  unless ($tce=~/\d+/)   { print STDERR "tce_data_for_kepoi_name($kepoi_name):    no tce\n"; return undef }
   $x=new XAQ;
   @col=qw( tce_plnt_num tce_period tce_time0bk tce_duration rowupdate );
   $x->select_col(@col)->add_where("kepid=$kepid")->add_where("tce_plnt_num=$tce");
