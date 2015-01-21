@@ -69,7 +69,8 @@ sub sort_with_first {
 # script functions for encoding XML data
 
 sub load_meta {
-  my $X=shift;   # reference to XA object
+  my $X=shift;  # reference to XA object
+  my $T=shift;  # TCE parameters for the preferred planet
   my @pnames=@_;
   my $first=1;  # host and 'other' data only assigned once
   my $m;
@@ -79,19 +80,35 @@ sub load_meta {
     msg "Keplernames Planet Row for $pname", 'DEBUG';
     my $e=$X->exoplanet_planet_row($n->{alt_name});
     msg "Exoplanet Planet Row for $n->{alt_name}", 'DEBUG';
+    # load planet parameters
+    for (keys %$e) { $m->{planets}{$n->{kepler_name}}{$_}=$e->{$_} }
     if ($first) {
       # load selected host parameters
-      for (qw( pl_hostname st_rad st_teff pl_name )) { $m->{$_}=$e->{$_} }
+      for (qw( pl_hostname st_rad st_teff )) { $m->{$_}=$e->{$_} }
+      $m->{pl_name}=$n->{kepler_name};   # preferred planet name (not necessarily $e->{pl_name}!!!
+      override_meta($m->{planets}{$m->{pl_name}},$T);
       # other parameters
       $m->{date}=$n->{last_update};
       $first=0;
     }
-    # load planet parameters
-    for (keys %$e) { $m->{planets}{$n->{kepler_name}}{$_}=$e->{$_} }
   }
   return $m;
 }
     
+sub override_meta {
+  my $pmeta=shift;    # hash of planet-specific meta-data we are loading / overriding
+  my $tcep=shift;     # hash of TCE parameters for the preferred planet
+  my $fplanet=$pmeta->{pl_name};
+  msg "$fplanet:  $pmeta->{pl_orbsmax} vs. $tcep->{tce_sma}", 'DEBUG';
+  $pmeta->{pl_orbsmax}=$tcep->{tce_sma}           if defined $tcep->{tce_sma};   # AU
+  msg "$fplanet:  $pmeta->{pl_trandur} vs. @{[ $tcep->{tce_duration}/24.0 ]}", 'DEBUG';
+  $pmeta->{pl_trandur}=$tcep->{tce_duration}/24.0 if defined $tcep->{tce_duration};  # days vs. hours
+  msg "$fplanet:  $pmeta->{pl_radj} vs. @{[ $tcep->{tce_prad}/11.209 ]}", 'DEBUG';
+  $pmeta->{pl_radj}   =$tcep->{tce_prad}/11.209   if defined $tcep->{tce_prad};    # jupiter radius vs. earth radius
+  msg "$fplanet:  $pmeta->{pl_orbper} vs. $tcep->{tce_period}", 'DEBUG';
+  $pmeta->{pl_orbper} =$tcep->{tce_period}        if defined $tcep->{tce_period};         # days
+}
+
 sub wrap_xml {
   my $keyword=shift;
   my $content=shift;
@@ -283,7 +300,8 @@ open TEMP, ">$tempfile" or fail "Couldn't create $tempfile:  $!";
 print TEMP $dv_data, "\n";
 close TEMP;
   
-my $meta=load_meta($X,@pnames);   # gather all info, and process into meta data for XML writing
+my $meta=load_meta($X,$tce_data->{$tce},@pnames);   # gather all info, and process into meta data for XML writing
+                                                    # use TCE versions of parameters, where available
 
 my $T=new IPAC_AsciiTable $tempfile;
 
