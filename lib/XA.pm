@@ -117,7 +117,7 @@ sub tce_data_for_kepoi_name {
   unless ($kepid=~/\d+/) { print STDERR "tce_data_for_kepoi_name($kepoi_name):  no kepid\n"; return undef }
   unless ($tce=~/\d+/)   { print STDERR "tce_data_for_kepoi_name($kepoi_name):    no tce\n"; return undef }
   $x=new XAQ;
-  @col=qw( tce_plnt_num tce_period tce_time0bk tce_duration rowupdate );
+  @col=qw( tce_plnt_num tce_period tce_time0bk tce_duration tce_sma tce_prad rowupdate );
   $x->select_col(@col)->add_where("kepid=$kepid")->add_where("tce_plnt_num=$tce");
   $r=parse_table_by_index($col[0], $x->q1_q16_tce(), $x->delim(), "Kepler TCE for $kepid");
   return $r;
