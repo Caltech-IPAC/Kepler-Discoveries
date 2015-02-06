@@ -95,18 +95,19 @@ sub load_meta {
   return $m;
 }
     
+# the checks here assume that zero is not an acceptable value for any of these parameter values
 sub override_meta {
   my $pmeta=shift;    # hash of planet-specific meta-data we are loading / overriding
   my $tcep=shift;     # hash of TCE parameters for the preferred planet
   my $fplanet=$pmeta->{pl_name};
   msg "$fplanet:  $pmeta->{pl_orbsmax} vs. $tcep->{tce_sma}", 'DEBUG';
-  $pmeta->{pl_orbsmax}=$tcep->{tce_sma}           if defined $tcep->{tce_sma};   # AU
+  $pmeta->{pl_orbsmax}=$tcep->{tce_sma}           if $tcep->{tce_sma};   # AU
   msg "$fplanet:  $pmeta->{pl_trandur} vs. @{[ $tcep->{tce_duration}/24.0 ]}", 'DEBUG';
-  $pmeta->{pl_trandur}=$tcep->{tce_duration}/24.0 if defined $tcep->{tce_duration};  # days vs. hours
+  $pmeta->{pl_trandur}=$tcep->{tce_duration}/24.0 if $tcep->{tce_duration};  # days vs. hours
   msg "$fplanet:  $pmeta->{pl_radj} vs. @{[ $tcep->{tce_prad}/11.209 ]}", 'DEBUG';
-  $pmeta->{pl_radj}   =$tcep->{tce_prad}/11.209   if defined $tcep->{tce_prad};    # jupiter radius vs. earth radius
+  $pmeta->{pl_radj}   =$tcep->{tce_prad}/11.209   if $tcep->{tce_prad};    # jupiter radius vs. earth radius
   msg "$fplanet:  $pmeta->{pl_orbper} vs. $tcep->{tce_period}", 'DEBUG';
-  $pmeta->{pl_orbper} =$tcep->{tce_period}        if defined $tcep->{tce_period};         # days
+  $pmeta->{pl_orbper} =$tcep->{tce_period}        if $tcep->{tce_period};         # days
 }
 
 sub wrap_xml {
@@ -154,9 +155,9 @@ sub gen_xml {
     }
     msg "Loading data for planet $pname:  ".Dumper($pmeta), 'DEBUG';
     $pxml = wrap_xml('name',                       nw($pname));
-    $pxml.= wrap_xml('semimajorAxis',              $pmeta->{pl_orbsmax});
-    $pxml.= wrap_xml('radius',                     $pmeta->{pl_radj});   # JUPITER RADIUS???
-    $pxml.= wrap_xml('period',                     $pmeta->{pl_orbper});
+    $pxml.= wrap_xml('semimajorAxis',              $pmeta->{pl_orbsmax} || '0');
+    $pxml.= wrap_xml('radius',                     $pmeta->{pl_radj}    || '0');   # JUPITER RADIUS???
+    $pxml.= wrap_xml('period',                     $pmeta->{pl_orbper}  || '0');
     if ($is_featured) {
       $pxml.= wrap_xml('longitudeOfAscendingNode',   undef // $pi2);  
       $pxml.= wrap_xml('argumentOfPericenter',       undef // $pi2);
