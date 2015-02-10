@@ -122,7 +122,7 @@ sub series_xml {
   my $data=shift;
   my $filt=shift;
   assert { $#{$time}==$#{$data} } "Expect time and data to have same array lengths";
-  my $xml;
+  my $xml='';
   for my $i (0..$#{$time}) {
     $filt->[$i]=0 unless (is_number($time->[$i]) && is_number($data->[$i]));  # delete NaNs for data & model
     $xml.=wrap_xml('pt',wrap_xml('ma',$time->[$i],'').wrap_xml('i',$data->[$i],'')) if $filt->[$i];

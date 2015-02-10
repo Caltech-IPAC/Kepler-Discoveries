@@ -24,7 +24,7 @@ Exoplanet Archive data and return content of interest to the rest of this script
 
 =cut
 
-my $WGET_URL="http://exoplanetarchive.ipac.caltech.edu/bulk_data_download/Kepler_TCE_DV_wget.bat";
+my $WGET_BAT="bulk_data_download/Kepler_TCE_DV_wget.bat";
 
 # parse the result from a table "select all".  
 # return is a reference to a hash of hash references, where
@@ -99,7 +99,7 @@ sub new {
   my $x;  # have to get a "clean" XAQ object for each call
   $x=new XAQ; $self->{N}=parse_table_by_index('kepler_name',$x->select_all()->keplernames,   $x->delim(),'Kepler Names');  
   $x=new XAQ; $self->{X}=parse_table_by_index('pl_name',    $x->select_all()->exoplanets,    $x->delim(),'Confirmed Exoplanets'); 
-  $self->{W}=dv_data_wgets($WGET_URL);
+  $self->{W}=dv_data_wgets($x->base_url().'/'.$WGET_BAT);
   return bless $self, $class;
 }
 
@@ -145,8 +145,12 @@ sub dv_series {
   my $kepid=shift; 
   my $tce=shift; 
   my $key=sprintf("%09d",$kepid).'_'.sprintf("%02d",$tce);
-#  print STDERR "try to get a dv_series for $kepid and planet $tce\n";
-  return undef unless defined $self->{W}{$key};
+#  print STDERR "try to get a dv_series for $kepid and planet $tce:  key=$key\n";
+  unless (defined $self->{W}{$key}) {
+    print STDERR "No dv_series for $kepid and planet $tce:  key=$key\n";
+#    print Dumper($self->{W}),"\n";
+    return undef;
+  }
 #  print STDERR "get using $self->{W}{$key}\n";
   return get($self->{W}{$key});
 }

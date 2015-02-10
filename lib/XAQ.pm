@@ -21,7 +21,10 @@ use strict;
 use warnings;
 use LWP::Simple;
 
-my $BURL="http://exoplanetarchive.ipac.caltech.edu/cgi-bin/nstedAPI/nph-nstedAPI?";
+our $DEFAULT_INTERNAL=1;
+
+my $BURL="http://exoplanetarchive.ipac.caltech.edu";
+my $APIQ="cgi-bin/nstedAPI/nph-nstedAPI?";
 
 my $WC='%25';     # wildcard character
 my $DELIM='\|';   # we used pipe-delimited output:  
@@ -30,19 +33,28 @@ my $DELIM='\|';   # we used pipe-delimited output:
 sub wc    { return $WC }
 sub delim { return $DELIM }
 
+sub set_default_internal { $DEFAULT_INTERNAL=1 }
+sub set_default_external { $DEFAULT_INTERNAL=0 }
+ 
 # the constructor can take an alternative base url as an optional argument
 # data elements are:
 #     b:  (simple string) base URL for queries
+#     a:  (simple string) API query prefix
 #     q:  (array ref) list of query items
 #     w:  (array ref) list of where SELECT logic items
 
 sub new {
   my $class=shift;
   my $s={};
-  $s->{b}=shift() // $BURL;
-  my $self=bless $s, $class;
+  my $self=bless {}, $class;
+  $self->{a}=$APIQ;
+  if ($DEFAULT_INTERNAL) { $self->set_internal_site() } else { $self->set_external_site() }
   return $self->clear()->bar_format();
 }
+
+sub set_internal_site { my $self=shift; $self->{b}=$BURL.":8000" }
+sub set_external_site { my $self=shift; $self->{b}=$BURL         }
+sub base_url          { my $self=shift; return $self->{b}        }
 
 # these mutators return a reference to the object to allow cascading calls
 # i.e., $object->clear()->bar_format(...)->add_where(...)->add_where(...)
@@ -73,7 +85,7 @@ sub result {
     my $w="where=".join("+AND+",@{$self->{w}});
     $self->add_query($w);
   }
-  my $q=$self->{b}.join("\&",@{$self->{q}});
+  my $q=$self->base_url().'/'.$APIQ.join("\&",@{$self->{q}});
   print STDERR "Executing API Query-->$q<--\n";
   return get($q);
 }
