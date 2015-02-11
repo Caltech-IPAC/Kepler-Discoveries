@@ -24,7 +24,7 @@ Exoplanet Archive data and return content of interest to the rest of this script
 
 =cut
 
-my $WGET_BAT="bulk_data_download/Kepler_TCE_DV_wget.bat";
+my $WGET_BAT="bulk_data_download/Kepler_KOI_DV_wget.bat";
 
 # parse the result from a table "select all".  
 # return is a reference to a hash of hash references, where
