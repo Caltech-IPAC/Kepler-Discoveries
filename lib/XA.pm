@@ -85,7 +85,8 @@ sub dv_data_wgets {
     next unless $line=~/^wget/;
     my @F=split(' ',$line);
     my $file_url=$F[3];  $file_url=~s/[']//g;
-    my ($kepid,$tce)=($file_url=~/kplr(\d{9}).+?tce_(\d{2})/);
+    my ($kepid,$tce)=($file_url=~/kplr(\d{9}).+?q16_tce_(\d{2})/);
+    next unless defined $kepid && defined $tce;
     my $key=$kepid.'_'.$tce;
     $result->{$key}=$file_url;
   }
