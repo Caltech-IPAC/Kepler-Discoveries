@@ -77,6 +77,7 @@ sub sort_with_first {
 sub load_meta {
   my $X=shift;  # reference to XA object
   my $T=shift;  # TCE parameters for the preferred planet
+  my $S=shift;  # Stellar data from Cumulative KOI Table
   my @pnames=@_;
   my $first=1;  # host and 'other' data only assigned once
   my $m;
@@ -90,7 +91,9 @@ sub load_meta {
     for (keys %$e) { $m->{planets}{$n->{kepler_name}}{$_}=$e->{$_} }
     if ($first) {
       # load selected host parameters
-      for (qw( pl_hostname st_rad st_teff )) { $m->{$_}=$e->{$_} }
+      $m->{st_rad} =$S->{koi_srad};   # default, override by planet table if available
+      $m->{st_teff}=$S->{koi_steff};  # default, override by planet table if available
+      for (qw( pl_hostname st_rad st_teff )) { $m->{$_}=$e->{$_} if $e->{$_} }   # only works because '0' and '0.00' are not valid values
       $m->{pl_name}=$n->{kepler_name};   # preferred planet name (not necessarily $e->{pl_name}!!!
       override_meta($m->{planets}{$m->{pl_name}},$T);
       # other parameters
@@ -295,13 +298,21 @@ for my $kname ($opt{all} ? sort { $a cmp $b } @r : ( join(' ',@ARGV) )) {
   msg "Fetching DV Time Series data for $n->{kepid} and tce $tce";
   my $dv_data=$X->dv_series($n->{kepid},$tce);
   next unless check { defined $dv_data } "$kname:  Couldn't extract DV series from $n->{kepid} and tce $tce";
+
+  my $cum_stellar_data=$X->stellar_data_for_kepoi_name($n->{kepoi_name});
+  msg Dumper($cum_stellar_data), 'DEBUG';
+  
+  next unless check { defined $cum_stellar_data and scalar(keys %$cum_stellar_data) } "$kname:  Stellar data from Cum KOI table available for $n->{kepoi_name}";
+  assert { scalar(keys %$cum_stellar_data)==1 } "$kname:  Should be only one Cum KOI Table Stellar Data entry for $n->{kepoi_name}";
+  my ($csd_key)=keys %$cum_stellar_data;   # should be only one!
+
   
   my $tempfile="$n->{kepid}_$tce.$$.tbl";
   open TEMP, ">$tempfile" or fail "Couldn't create $tempfile:  $!";
   print TEMP $dv_data, "\n";
   close TEMP;
   
-  my $meta=load_meta($X,$tce_data->{$tce},@pnames);   # gather all info, and process into meta data for XML writing
+  my $meta=load_meta($X,$tce_data->{$tce},$cum_stellar_data->{$csd_key},@pnames);   # gather all info, and process into meta data for XML writing
   # use TCE versions of parameters, where available
   
   my $T=new IPAC_AsciiTable $tempfile;

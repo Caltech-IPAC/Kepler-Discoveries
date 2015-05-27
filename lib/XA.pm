@@ -124,6 +124,18 @@ sub tce_data_for_kepoi_name {
   return $r;
 }
 
+# lookup data from other exoplanet archive tables
+
+sub stellar_data_for_kepoi_name   {
+  my $self=shift;
+  my $kepoi_name=shift;
+  my $x=new XAQ;
+  my @col=qw( kepoi_name koi_steff koi_srad );
+  $x->select_col(@col)->equals_str('kepoi_name',$kepoi_name);
+  my $r=parse_table_by_index('kepoi_name', $x->cumulative(), $x->delim(), "Kepler KOI (cum) for $kepoi_name");
+  return $r;
+}
+
 # Short-cut accessors for table rows (returned as hashes of col_name==>row_value)
 # Lookup to tables is for the following column names:
 #     exoplanets:   pl_name
@@ -140,6 +152,7 @@ sub kepler_multiples  {
 
 sub exoplanet_planet_row   { my $self=shift; my $pname=shift; return $self->{X}{$pname} }
 sub keplernames_planet_row { my $self=shift; my $kname=shift; return $self->{N}{$kname} }
+
 
 sub dv_series { 
   my $self=shift; 
