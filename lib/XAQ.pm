@@ -21,7 +21,7 @@ use strict;
 use warnings;
 use LWP::Simple;
 
-our $DEFAULT_INTERNAL=1;
+our $DEFAULT_INTERNAL=0;
 
 my $BURL="http://exoplanetarchive.ipac.caltech.edu";
 my $APIQ="cgi-bin/nstedAPI/nph-nstedAPI?";
@@ -98,6 +98,8 @@ sub cumulative    { return shift()->from_table('cumulative')->result    }
 sub keplerstellar { return shift()->from_table('keplerstellar')->result }
 sub q1_q16_tce    { return shift()->from_table('q1_q16_tce')->result    }
 sub q1_q16_koi    { return shift()->from_table('q1_q16_koi')->result    }
+sub q1_q17_tce    { return shift()->from_table('q1_q17_tce')->result    }
+sub q1_q17_koi    { return shift()->from_table('q1_q17_koi')->result    }
 
 1;
 
@@ -130,7 +132,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 =head1 Auther and Version
 
-  Version 1.1
+  Version 2015-07-27-a
   Dr. David A. Imel, <imel@caltech.edu>
 
 =cut

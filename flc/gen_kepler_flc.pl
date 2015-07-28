@@ -296,7 +296,7 @@ for my $kname ($opt{all} ? sort { $a cmp $b } @r : ( join(' ',@ARGV) )) {
   my $duration=$tce_data->{$tce}{tce_duration};
   
   msg "Fetching DV Time Series data for $n->{kepid} and tce $tce";
-  my $dv_data=$X->dv_series($n->{kepid},$tce);
+  my $dv_data=$X->dv_series($n->{kepid},$tce,$X->tce_deliv_for_kepoi_name($n->{kepoi_name}));
   next unless check { defined $dv_data } "$kname:  Couldn't extract DV series from $n->{kepid} and tce $tce";
 
   my $cum_stellar_data=$X->stellar_data_for_kepoi_name($n->{kepoi_name});

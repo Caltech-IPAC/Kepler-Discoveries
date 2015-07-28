@@ -24,7 +24,7 @@ Exoplanet Archive data and return content of interest to the rest of this script
 
 =cut
 
-my $WGET_BAT="bulk_data_download/Kepler_KOI_DV_wget.bat";
+my @WGET_BAT = ("bulk_data_download/Kepler_KOI_DV_wget.bat", "bulk_data_download/Kepler_TCE_DV_wget.bat");
 
 # parse the result from a table "select all".  
 # return is a reference to a hash of hash references, where
@@ -63,6 +63,41 @@ sub parse_table_by_index {
   return $T;
 }
 
+# same as above, but using combination of two columns to form the index
+
+sub parse_table_by_two_cols {
+  my $i1=shift;  # index of column 1 for table
+  my $i2=shift;  # index of column 2 for table
+  my $q=shift;  # query result (long string with multiple rows, including header)
+  my $d=shift;  # delimiter for columns
+  my $t=shift;  # tag for diagnostic messages
+  my @r=split("\n",$q);
+  my $c=shift @r;  # column header names
+  unless (scalar(@r)) {    # missing this entry -- return ref to an empty hash and print warning to STDERR
+    print STDERR "no data found:  $t by ($i1,$i2)\n";
+    return {};
+  }
+  my @c=split($d,$c);     # pipe-delimited columns makes this easier -- assuming no pipes in fields
+  my %c=map { $_=>1 } @c; # form a hash to make sure that requested columns appear in the headers
+  die "index $i1 not found as column header for table $t" unless exists $c{$i1};
+  die "index $i2 not found as column header for table $t" unless exists $c{$i2};
+  my $j=0;
+  my $T={}; # hash of hashes, using values of ($i1,$i2) for the keys
+  for my $r (@r) {
+    ++$j;    # diagnostic counter
+    $r.=" " if $r=~/[|]$/;
+    my @d=split($d,$r);  #  now have this row in columns @d (names are in @c)
+    die "number of column names != number of values (@{[ scalar(@c) ]} != @{[ scalar(@d)]}) on row $j (row 0 is headers) for $t\n"
+      ."Headers:\n".Dumper(@c)."\nData:\n".Dumper(@d)."\nSource:\n".Dumper($q)
+	unless scalar(@c)==scalar(@d); # columns of data returned had better match number of column names, or quit.
+    my %h;
+    for (0..$#c) { $h{$c[$_]}=$d[$_] }  # fill the hash
+    die "index ($i1,$i2) value ($h{$i1}_$h{$i2}) is not unique at row $j for $t\n-->$r<--\n".Dumper($T) if exists $T->{"$h{$i1}_$h{$i2}"};
+    $T->{"$h{$i1}_$h{$i2}"}=\%h;
+  }
+  return $T;
+}
+
 # helper function for the constructor which figures out which delivery to select for the Kepler Stellar Table kepids
 
 sub latest_stellar_delivery {
@@ -77,22 +112,24 @@ sub latest_stellar_delivery {
 }
 
 sub dv_data_wgets {
-  my $url=shift;
-  my $bat=get($url);
-  die "Couldn't get wget bat file from $url" unless $bat;
   my $result;
-  for my $line (split("\n",$bat)) {
-    next unless $line=~/^wget/;
-    my @F=split(' ',$line);
-    my $file_url=$F[3];  $file_url=~s/[']//g;
-    my ($kepid,$tce)=($file_url=~/kplr(\d{9}).+?q16_tce_(\d{2})/);
-    next unless defined $kepid && defined $tce;
-    my $key=$kepid.'_'.$tce;
-    $result->{$key}=$file_url;
+  for my $url (@_) {
+print STDERR "Reading dv time-series filenames from $url\n";
+    my $bat=get($url);
+    die "Couldn't get wget bat file from $url" unless $bat;
+    for my $line (split("\n",$bat)) {
+      next unless $line=~/^wget/;
+      my @F=split(' ',$line);
+      my $file_url=$F[3];  $file_url=~s/[']//g;
+      my ($kepid,$deliv,$tce)=($file_url=~/kplr(\d{9})_(.+?_tce)_(\d{2})/);
+      next unless defined $deliv && defined $kepid && defined $tce;
+      my $key=sprintf("%09d",$kepid).'_'.sprintf("%02d",$tce);
+      $result->{$deliv}{$key}=$file_url;
+    }
   }
   return $result;
 }
-  
+
 # get all tables up front and parse into useful hashes
 sub new { 
   my $class=shift; 
@@ -100,19 +137,40 @@ sub new {
   my $x;  # have to get a "clean" XAQ object for each call
   $x=new XAQ; $self->{N}=parse_table_by_index('kepler_name',$x->select_all()->keplernames,   $x->delim(),'Kepler Names');  
   $x=new XAQ; $self->{X}=parse_table_by_index('pl_name',    $x->select_all()->exoplanets,    $x->delim(),'Confirmed Exoplanets'); 
-  $self->{W}=dv_data_wgets($x->base_url().'/'.$WGET_BAT);
+  $x=new XAQ; $self->{D}=parse_table_by_index('kepoi_name', $x->select_all()->cumulative,    $x->delim(),'Cumulative KOI');
+#  $x=new XAQ; $self->{D}=parse_table_by_two_cols('kepid','koi_tce_plnt_num', $x->select_all()->cumulative, $x->delim(), 'Cumulative');   # don't need all -- could subselect
+  # delivery mapping:
+  # http://exoplanetarchive.ipac.caltech.edu/cgi-bin/nstedAPI/nph-nstedAPI?table=cumulative&format=ipac&select=kepid,kepoi,kepoi_name,koi_tce_plnt_num,koi_tce_delivname
+  $x=new XAQ; 
+  $self->{W}=dv_data_wgets(map { $x->base_url().'/'.$_ } @WGET_BAT);
   return bless $self, $class;
+}
+
+sub tce_deliv_for_kepoi_name {
+  my $self=shift;
+  my $kepoi_name=shift;
+  return $self->{D}{$kepoi_name}{koi_tce_delivname};
+}
+
+sub koi_deliv_for_kepoi_name {
+  my $self=shift;
+  my $kepoi_name=shift;
+  return $self->{D}{$kepoi_name}{koi_disp_prov};
 }
 
 # selected TCE data for a particular kepid from the latest TCE table
 sub tce_data_for_kepoi_name {
   my $self=shift;
   my $kepoi_name=shift;
+print STDERR "tce_data_for_kepoi_name($kepoi_name)\n";
+  my $tce_deliv=$self->tce_deliv_for_kepoi_name($kepoi_name);
+  my $koi_deliv=$self->koi_deliv_for_kepoi_name($kepoi_name);
+print STDERR "TCE data from $tce_deliv, KOI data from $koi_deliv\n";
   my $x=new XAQ;
   my @col=qw( kepoi_name kepid koi_tce_plnt_num );
   $x->select_col(@col)->equals_str('kepoi_name',$kepoi_name);
-  my $r=parse_table_by_index($col[0], $x->q1_q16_koi(), $x->delim(), "Kepler KOI for $kepoi_name");
-  unless (defined $r->{$kepoi_name}) { print STDERR "tce_data_for_kepoi_name($kepoi_name):  no result\n"; return undef }
+  my $r=parse_table_by_index($col[0], $x->from_table($koi_deliv)->result(), $x->delim(), "Kepler KOI for $kepoi_name from $koi_deliv");
+  unless (defined $r->{$kepoi_name}) { print STDERR "tce_data_for_kepoi_name($kepoi_name) from $koi_deliv:  no result\n"; return undef }
   my $kepid=$r->{$kepoi_name}{kepid};
   my $tce  =$r->{$kepoi_name}{koi_tce_plnt_num};
   unless ($kepid=~/\d+/) { print STDERR "tce_data_for_kepoi_name($kepoi_name):  no kepid\n"; return undef }
@@ -120,7 +178,7 @@ sub tce_data_for_kepoi_name {
   $x=new XAQ;
   @col=qw( tce_plnt_num tce_period tce_time0bk tce_duration tce_sma tce_prad rowupdate );
   $x->select_col(@col)->add_where("kepid=$kepid")->add_where("tce_plnt_num=$tce");
-  $r=parse_table_by_index($col[0], $x->q1_q16_tce(), $x->delim(), "Kepler TCE for $kepid");
+  $r=parse_table_by_index($col[0], $x->from_table($tce_deliv)->result(), $x->delim(), "Kepler TCE for $kepid from $tce_deliv");
   return $r;
 }
 
@@ -132,7 +190,7 @@ sub stellar_data_for_kepoi_name   {
   my $x=new XAQ;
   my @col=qw( kepoi_name koi_steff koi_srad );
   $x->select_col(@col)->equals_str('kepoi_name',$kepoi_name);
-  my $r=parse_table_by_index('kepoi_name', $x->cumulative(), $x->delim(), "Kepler KOI (cum) for $kepoi_name");
+  my $r=parse_table_by_index('kepoi_name', $x->cumulative(), $x->delim(), "Kepler KOI (cum) for $kepoi_name");  # use $self->{D}???
   return $r;
 }
 
@@ -153,20 +211,22 @@ sub kepler_multiples  {
 sub exoplanet_planet_row   { my $self=shift; my $pname=shift; return $self->{X}{$pname} }
 sub keplernames_planet_row { my $self=shift; my $kname=shift; return $self->{N}{$kname} }
 
+sub dv_series_delivs { my $self=shift; return keys %{$self->{W}} }
 
 sub dv_series { 
   my $self=shift; 
   my $kepid=shift; 
   my $tce=shift; 
+  my $deliv=shift; 
   my $key=sprintf("%09d",$kepid).'_'.sprintf("%02d",$tce);
-#  print STDERR "try to get a dv_series for $kepid and planet $tce:  key=$key\n";
-  unless (defined $self->{W}{$key}) {
-    print STDERR "No dv_series for $kepid and planet $tce:  key=$key\n";
-#    print Dumper($self->{W}),"\n";
+print STDERR "try to get a dv_series for $kepid and planet $tce from $deliv:  key=$key\n";
+  unless (defined $self->{W}{$deliv}{$key}) {
+print STDERR Dumper($self->{W}{$deliv}),"\n";
+    print STDERR "No dv_series in $deliv for $kepid and planet $tce:  key=$key\n";
     return undef;
   }
-#  print STDERR "get using $self->{W}{$key}\n";
-  return get($self->{W}{$key});
+#  print STDERR "get using $self->{W}{$deliv}{$key}\n";
+  return get($self->{W}{$deliv}{$key});
 }
 
 1;
